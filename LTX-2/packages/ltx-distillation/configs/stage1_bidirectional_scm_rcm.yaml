@@ -10,8 +10,8 @@ generator_grad: {model: true}
 real_score_grad: {model: false}
 fake_score_grad: {model: false}
 
-dmd_enabled: false
-critic_enabled: false
+dmd_enabled: true
+critic_enabled: true
 dmd_style: rcm_trig
 dmd_p_D_shift: 5.0
 backward_trig_timesteps: [1.5, 1.4, 1.0]
