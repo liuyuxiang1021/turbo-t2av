@@ -17,7 +17,7 @@ dmd_p_D_shift: 5.0
 backward_trig_timesteps: [1.5, 1.4, 1.0]
 denoising_step_list: [1000, 757, 522, 0]
 num_train_timestep: 1000
-real_video_guidance_scale: 5.0
+real_video_guidance_scale: 3.0
 real_audio_guidance_scale: 5.0
 denoising_loss_type: velocity
 distillation_loss: dmd
@@ -39,7 +39,7 @@ scm_fd_size: 0.0001
 scm_tangent_warmup: 0            # no warmup needed with boost+clip
 scm_strict_rcm: true
 scm_diagnostic_mode: false
-scm_tangent_clip_mean: 0          # no tangent clip (matching rCM 14B)
+scm_tangent_clip_mean: 10.0        # p99 clip: stronger guard than 112904's 20
 scm_student_field_clip_mean: 1.0  # guardrail: keep unstable student flow mean from running away
 scm_loss_fp32: true               # keep SCM g/norm/loss math in fp32 while model forward stays bf16
 scm_time_eps: 0.0001
