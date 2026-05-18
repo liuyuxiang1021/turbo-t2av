@@ -2767,6 +2767,14 @@ class LTX2DMD(nn.Module):
                 video_cons_weight * g_video_consistency.double() / video_cons_norm
                 + video_tan_weight * g_video_tangent.double() / video_tan_norm
             )
+        elif self.scm_g_normalization in ("per_modality", "per_frame"):
+            # Single norm, per-modality: each modality independently normalized.
+            g_video_raw = g_video_consistency + g_video_tangent
+            video_g_norm = (
+                torch.sqrt(g_video_raw.double().square().sum(dim=(1, 2, 3, 4), keepdim=False))
+                .view(B, 1, 1, 1, 1) + 0.1
+            )
+            g_video = g_video_raw.double() / video_g_norm
         else:
             raise NotImplementedError(
                 f"SCM normalization {self.scm_g_normalization!r} is not implemented "
@@ -2778,13 +2786,19 @@ class LTX2DMD(nn.Module):
         ).sum(dim=(1, 2, 3, 4))
 
         if active_audio:
+            g_audio_raw = g_audio_consistency + g_audio_tangent
             if self.scm_g_normalization == "joint":
-                g_audio_raw = g_audio_consistency + g_audio_tangent
-                audio_joint_norm = (
+                audio_norm_val = (
                     torch.sqrt(g_audio_raw.double().square().sum(dim=(1, 2), keepdim=False))
                     .view(B, 1, 1) + 0.1
                 )
-                g_audio = g_audio_raw.double() / audio_joint_norm
+                g_audio = g_audio_raw.double() / audio_norm_val
+            elif self.scm_g_normalization in ("per_modality", "per_frame"):
+                audio_norm_val = (
+                    torch.sqrt(g_audio_raw.double().square().sum(dim=(1, 2), keepdim=False))
+                    .view(B, 1, 1) + 0.1
+                )
+                g_audio = g_audio_raw.double() / audio_norm_val
             else:
                 audio_cons_norm = (
                     torch.sqrt(g_audio_consistency.double().square().sum(dim=(1, 2), keepdim=False))

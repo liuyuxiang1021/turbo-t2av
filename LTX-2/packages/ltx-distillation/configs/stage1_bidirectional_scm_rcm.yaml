@@ -17,7 +17,7 @@ dmd_p_D_shift: 5.0
 backward_trig_timesteps: [1.5, 1.4, 1.0]
 denoising_step_list: [1000, 757, 522, 0]
 num_train_timestep: 1000
-real_video_guidance_scale: 3.0
+real_video_guidance_scale: 5.0
 real_audio_guidance_scale: 5.0
 denoising_loss_type: velocity
 distillation_loss: dmd
@@ -44,7 +44,7 @@ scm_student_field_clip_mean: 1.0  # guardrail: keep unstable student flow mean f
 scm_loss_fp32: true               # keep SCM g/norm/loss math in fp32 while model forward stays bf16
 scm_time_eps: 0.0001
 scm_jvp_impl: internal
-scm_g_normalization: joint        # rCM-style whole-g norm; clip guards field blow-up
+scm_g_normalization: per_modality  # separate norm per modality; AV both contribute
 video_loss_weight: 1.0
 audio_loss_weight: 1              # full AV
 
