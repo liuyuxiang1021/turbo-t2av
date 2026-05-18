@@ -17,8 +17,8 @@ dmd_p_D_shift: 5.0
 backward_trig_timesteps: [1.5, 1.4, 1.0]
 denoising_step_list: [1000, 757, 522, 0]
 num_train_timestep: 1000
-real_video_guidance_scale: 5.0
-real_audio_guidance_scale: 5.0
+real_video_guidance_scale: 3.0
+real_audio_guidance_scale: 7.0
 denoising_loss_type: velocity
 distillation_loss: dmd
 
