@@ -29,7 +29,7 @@ fake_task_type: bidirectional_av
 # ===== SCM (exact rCM config) =====
 scm_enabled: true
 scm_data_path: /data/datasets/turbodiff_datasets_and_ckpt/tavgbench/omniforcing_latent_100k
-scm_weight: 0.25
+scm_weight: 1.0
 scm_loss_scale: 100.0
 scm_p_G_mean: 1.5               # rCM 14B: median sigma=exp(1.5)≈4.5, noise-dominant
 scm_p_G_std: 1.6
@@ -51,11 +51,11 @@ audio_loss_weight: 1              # full AV
 # ===== Optimizer (rCM 14B config) =====
 lr: 2.0e-05
 generator_lr: 2.0e-05
-critic_lr: 4.0e-07
+critic_lr: 4.0e-06
 beta1: 0.0
 beta2: 0.999
 weight_decay: 0.01
-dfake_gen_update_ratio: 1
+dfake_gen_update_ratio: 5
 max_grad_norm: 10.0
 scheduler_type: constant
 
