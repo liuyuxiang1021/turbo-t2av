@@ -1097,13 +1097,9 @@ class Trainer:
                     )
                 if "train/scm_g_normalization_per_modality" in wandb_dict:
                     mode = (
-                        "dual_adaptive"
-                        if wandb_dict.get("train/scm_g_normalization_dual_adaptive", 0.0) > 0.5
-                        else (
-                            "per_modality"
-                            if wandb_dict["train/scm_g_normalization_per_modality"] > 0.5
-                            else "joint"
-                        )
+                        "per_modality"
+                        if wandb_dict["train/scm_g_normalization_per_modality"] > 0.5
+                        else "joint"
                     )
                     summary_parts.append(f"scm_g_norm={mode}")
                 if "train/video_loss_weight" in wandb_dict:
@@ -1150,14 +1146,6 @@ class Trainer:
                     summary_parts.append(
                         f"video_student={wandb_dict['train/alignment/scm_video_student_norm']:.6f}"
                     )
-                if "train/alignment/scm_video_student_raw_norm" in wandb_dict:
-                    summary_parts.append(
-                        f"video_student_raw={wandb_dict['train/alignment/scm_video_student_raw_norm']:.6f}"
-                    )
-                if "train/alignment/scm_video_student_clip_scale" in wandb_dict:
-                    summary_parts.append(
-                        f"video_student_clip={wandb_dict['train/alignment/scm_video_student_clip_scale']:.4f}"
-                    )
                 if "train/alignment/scm_video_g_norm" in wandb_dict:
                     summary_parts.append(
                         f"video_g={wandb_dict['train/alignment/scm_video_g_norm']:.6f}"
@@ -1193,14 +1181,6 @@ class Trainer:
                 if "train/alignment/scm_audio_student_norm" in wandb_dict:
                     summary_parts.append(
                         f"audio_student={wandb_dict['train/alignment/scm_audio_student_norm']:.6f}"
-                    )
-                if "train/alignment/scm_audio_student_raw_norm" in wandb_dict:
-                    summary_parts.append(
-                        f"audio_student_raw={wandb_dict['train/alignment/scm_audio_student_raw_norm']:.6f}"
-                    )
-                if "train/alignment/scm_audio_student_clip_scale" in wandb_dict:
-                    summary_parts.append(
-                        f"audio_student_clip={wandb_dict['train/alignment/scm_audio_student_clip_scale']:.4f}"
                     )
                 if "train/alignment/scm_audio_g_norm" in wandb_dict:
                     summary_parts.append(
