@@ -8,7 +8,7 @@ model_name: ltx2_av
 
 generator_grad: {model: true}
 real_score_grad: {model: false}
-fake_score_grad: {model: false}
+fake_score_grad: {model: true}
 
 dmd_enabled: true
 critic_enabled: true
