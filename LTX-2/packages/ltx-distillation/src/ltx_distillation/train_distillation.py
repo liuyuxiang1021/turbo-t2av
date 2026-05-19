@@ -1054,17 +1054,26 @@ class Trainer:
         # ALL ranks must participate because FSDP forward passes require
         # collective communication across all ranks.
         benchmark_min_step = int(getattr(config, "benchmark_min_step", 1))
+        benchmark_steps = getattr(config, "benchmark_steps", None)
         BENCHMARK = (
             self.benchmark_enabled
             and len(self.benchmark_prompts) > 0
             and self.step >= benchmark_min_step
-            and self.step % self.benchmark_iters == 0
+            and (
+                self.step in benchmark_steps
+                if benchmark_steps is not None
+                else self.step % self.benchmark_iters == 0
+            )
             and not getattr(config, "no_visualize", False)
             and not pretrain_benchmark_ran
         )
 
         if BENCHMARK:
+            torch.cuda.synchronize()
+            torch.cuda.empty_cache()
             self._run_benchmark_and_log()
+            torch.cuda.synchronize()
+            torch.cuda.empty_cache()
 
         # Logging (all scalars, no GPU tensors)
         if self.is_main_process:
@@ -1952,7 +1961,9 @@ class Trainer:
                     and getattr(self.config, "skip_initial_checkpoint", False)
                 )
             ):
+                torch.cuda.synchronize()
                 self.save()
+                torch.cuda.synchronize()
                 torch.cuda.empty_cache()
 
             barrier()
