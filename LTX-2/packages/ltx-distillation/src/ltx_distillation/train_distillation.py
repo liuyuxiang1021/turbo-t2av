@@ -350,6 +350,9 @@ class Trainer:
         - None / "constant": No scheduling (constant LR)
         - "cosine_warmup": Linear warmup then cosine decay to min_lr
         """
+        if optimizer is None:
+            return None
+
         scheduler_type = getattr(self.config, "scheduler_type", None)
         if scheduler_type is None or scheduler_type == "constant":
             return None
