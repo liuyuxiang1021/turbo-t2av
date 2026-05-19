@@ -40,7 +40,7 @@ scm_tangent_warmup: 0            # match 0517_112904 fast-trend run
 scm_strict_rcm: true
 scm_diagnostic_mode: false
 scm_tangent_clip_mean: 20.0        # p99 outlier guard from 0517_112904
-scm_tangent_ratio_cap: 2.0         # keep tangent from dominating consistency
+scm_tangent_ratio_cap: 10.0        # cap only extreme t_F/gap dominance
 scm_student_field_clip_mean: 0     # not in 112904
 scm_loss_fp32: false               # not in 112904
 scm_time_eps: 0.0001

@@ -2694,20 +2694,29 @@ class LTX2DMD(nn.Module):
             dim=(1, 2, 3, 4),
             keepdim=True,
         )
+        video_gap_abs_mean = torch.mean(
+            torch.abs((F_theta_video_sg - F_teacher_video).detach()),
+            dim=(1, 2, 3, 4),
+            keepdim=True,
+        )
         video_tangent_abs_mean_for_ratio = torch.mean(
             torch.abs(g_video_tangent.detach()),
             dim=(1, 2, 3, 4),
             keepdim=True,
         )
+        # Use the unweighted student-teacher field gap as the reference.
+        # The rCM geometry coefficient can be tiny near t=pi/2; capping against
+        # that weighted consistency term would suppress the legitimate tangent
+        # signal at high noise and turn SCM into a mostly-static teacher anchor.
         video_tangent_ratio_raw = (
             video_tangent_abs_mean_for_ratio
-            / video_consistency_abs_mean.clamp_min(1e-8)
+            / video_gap_abs_mean.clamp_min(1e-8)
         )
         video_tangent_ratio_scale = g_video_tangent.new_tensor(1.0)
         if self.scm_tangent_ratio_cap > 0:
             video_tangent_scale = (
                 self.scm_tangent_ratio_cap
-                * video_consistency_abs_mean
+                * video_gap_abs_mean
                 / video_tangent_abs_mean_for_ratio.clamp_min(1e-8)
             ).clamp(max=1.0)
             g_video_tangent = g_video_tangent * video_tangent_scale
@@ -2727,6 +2736,11 @@ class LTX2DMD(nn.Module):
                 dim=(1, 2),
                 keepdim=True,
             )
+            audio_gap_abs_mean = torch.mean(
+                torch.abs((F_theta_audio_sg - F_teacher_audio).detach()),
+                dim=(1, 2),
+                keepdim=True,
+            )
             audio_tangent_abs_mean_for_ratio = torch.mean(
                 torch.abs(g_audio_tangent.detach()),
                 dim=(1, 2),
@@ -2734,13 +2748,13 @@ class LTX2DMD(nn.Module):
             )
             audio_tangent_ratio_raw = (
                 audio_tangent_abs_mean_for_ratio
-                / audio_consistency_abs_mean.clamp_min(1e-8)
+                / audio_gap_abs_mean.clamp_min(1e-8)
             )
             audio_tangent_ratio_scale = g_audio_tangent.new_tensor(1.0)
             if self.scm_tangent_ratio_cap > 0:
                 audio_tangent_scale = (
                     self.scm_tangent_ratio_cap
-                    * audio_consistency_abs_mean
+                    * audio_gap_abs_mean
                     / audio_tangent_abs_mean_for_ratio.clamp_min(1e-8)
                 ).clamp(max=1.0)
                 g_audio_tangent = g_audio_tangent * audio_tangent_scale
@@ -2750,6 +2764,7 @@ class LTX2DMD(nn.Module):
             g_audio_consistency = None
             g_audio_tangent = None
             audio_consistency_abs_mean = None
+            audio_gap_abs_mean = None
             audio_tangent_ratio_raw = None
             audio_tangent_ratio_scale = None
 
