@@ -98,7 +98,7 @@ train_log_all_scalars: true
 checkpoint_iters: 500
 skip_initial_checkpoint: true
 
-benchmark_enabled: true
+benchmark_enabled: false
 benchmark_min_step: 0
 benchmark_iters: 50
 teacher_benchmark_enabled: false     # skip teacher refs for faster startup; enable for debug
