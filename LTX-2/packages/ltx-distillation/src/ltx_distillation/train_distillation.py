@@ -186,12 +186,11 @@ class Trainer:
         weight_decay = getattr(config, "weight_decay", 0.0)
         generator_lr = getattr(config, "generator_lr", config.lr)
         critic_lr = getattr(config, "critic_lr", config.lr)
+        generator_param_groups = self._build_generator_param_groups(generator_lr, weight_decay)
 
         self.generator_optimizer = torch.optim.AdamW(
-            [p for p in self.dmd.generator.parameters() if p.requires_grad],
-            lr=generator_lr,
+            generator_param_groups,
             betas=(config.beta1, config.beta2),
-            weight_decay=weight_decay,
         )
 
         if self.dmd.fake_score is not None:
@@ -206,7 +205,7 @@ class Trainer:
 
         # Learning rate schedulers
         self.generator_scheduler = self._create_lr_scheduler(self.generator_optimizer)
-        self.critic_scheduler = self._create_lr_scheduler(self.critic_optimizer)
+        self.critic_scheduler = self._create_lr_scheduler(self.critic_optimizer) if self.critic_optimizer is not None else None
 
         # Dataloader
         self._init_dataloader()
@@ -337,6 +336,58 @@ class Trainer:
         )
         if ok:
             self.wandb_enabled = False
+
+    def _build_generator_param_groups(self, base_lr: float, weight_decay: float) -> list[dict]:
+        """Build optional LR groups for time-modulation parameters.
+
+        SCM directly differentiates the model with respect to timestep, so the
+        AdaLN/time branch can become the first unstable path. These groups let
+        us damp only that branch while keeping the backbone learning rate high.
+        """
+        adaln_lr = getattr(self.config, "generator_adaln_lr", None)
+        output_scale_shift_lr = getattr(self.config, "generator_output_scale_shift_lr", None)
+
+        groups: dict[str, dict] = {
+            "backbone": {"params": [], "lr": base_lr, "weight_decay": weight_decay},
+        }
+        if adaln_lr is not None:
+            groups["adaln_time"] = {"params": [], "lr": float(adaln_lr), "weight_decay": weight_decay}
+        if output_scale_shift_lr is not None:
+            groups["output_scale_shift"] = {
+                "params": [],
+                "lr": float(output_scale_shift_lr),
+                "weight_decay": weight_decay,
+            }
+
+        def is_output_scale_shift(name: str) -> bool:
+            if "transformer_blocks" in name:
+                return False
+            return name.endswith("scale_shift_table") or name.endswith("audio_scale_shift_table")
+
+        for name, param in self.dmd.generator.named_parameters():
+            if not param.requires_grad:
+                continue
+            if output_scale_shift_lr is not None and is_output_scale_shift(name):
+                groups["output_scale_shift"]["params"].append(param)
+            elif adaln_lr is not None and "adaln_single" in name:
+                groups["adaln_time"]["params"].append(param)
+            else:
+                groups["backbone"]["params"].append(param)
+
+        param_groups = []
+        self.generator_param_group_names = []
+        for group_name, group in groups.items():
+            if group["params"]:
+                group["name"] = group_name
+                param_groups.append(group)
+                self.generator_param_group_names.append(group_name)
+                if self.is_main_process:
+                    print(
+                        f"[Optimizer] generator group {group_name}: "
+                        f"params={len(group['params'])}, lr={group['lr']:.3e}, wd={group['weight_decay']}"
+                    )
+
+        return param_groups
 
     def _create_lr_scheduler(self, optimizer):
         """Create learning rate scheduler based on config.
@@ -1040,6 +1091,10 @@ class Trainer:
                     wandb_dict[f"train/{gk}"] = self._to_scalar(gv)
 
             wandb_dict["train/lr_generator"] = self.generator_optimizer.param_groups[0]["lr"]
+            for group in self.generator_optimizer.param_groups:
+                group_name = group.get("name")
+                if group_name:
+                    wandb_dict[f"train/lr_generator/{group_name}"] = group["lr"]
             wandb_dict["train/lr_critic"] = (
                 self.critic_optimizer.param_groups[0]["lr"] if self.critic_optimizer is not None else 0.0
             )
