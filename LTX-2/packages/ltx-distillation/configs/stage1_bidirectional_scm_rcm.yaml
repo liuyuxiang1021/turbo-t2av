@@ -39,8 +39,14 @@ scm_fd_size: 0.0001
 scm_tangent_warmup: 0            # match 0517_112904 fast-trend run
 scm_strict_rcm: true
 scm_diagnostic_mode: false
-scm_tangent_clip_mean: 20.0        # p99 outlier guard from 0517_112904
-scm_tangent_ratio_cap: 10.0        # cap only extreme t_F/gap dominance
+scm_tangent_clip_mean: 0           # ablation: hard reject instead of soft tangent clip
+scm_tangent_ratio_cap: 0           # ablation: no custom tangent/gap soft cap
+scm_video_student_field_reject_mean: 2.0
+scm_audio_student_field_reject_mean: 2.0
+scm_video_tangent_reject_p99: 200.0
+scm_audio_tangent_reject_p99: 50.0
+scm_video_tangent_reject_mean: 0
+scm_audio_tangent_reject_mean: 0
 scm_student_field_clip_mean: 0     # not in 112904
 scm_loss_fp32: false               # not in 112904
 scm_time_eps: 0.0001

@@ -233,8 +233,40 @@ class LTX2DMD(nn.Module):
         self.scm_tangent_reject_mean = float(
             getattr(args, "scm_tangent_reject_mean", 0.0)
         )
+        self.scm_video_tangent_reject_mean = float(
+            getattr(args, "scm_video_tangent_reject_mean", self.scm_tangent_reject_mean)
+        )
+        self.scm_audio_tangent_reject_mean = float(
+            getattr(args, "scm_audio_tangent_reject_mean", self.scm_tangent_reject_mean)
+        )
+        self.scm_tangent_reject_p99 = float(
+            getattr(args, "scm_tangent_reject_p99", 0.0)
+        )
+        self.scm_video_tangent_reject_p99 = float(
+            getattr(args, "scm_video_tangent_reject_p99", self.scm_tangent_reject_p99)
+        )
+        self.scm_audio_tangent_reject_p99 = float(
+            getattr(args, "scm_audio_tangent_reject_p99", self.scm_tangent_reject_p99)
+        )
         self.scm_student_field_clip_mean = float(
             getattr(args, "scm_student_field_clip_mean", 0.0)
+        )
+        self.scm_student_field_reject_mean = float(
+            getattr(args, "scm_student_field_reject_mean", 0.0)
+        )
+        self.scm_video_student_field_reject_mean = float(
+            getattr(
+                args,
+                "scm_video_student_field_reject_mean",
+                self.scm_student_field_reject_mean,
+            )
+        )
+        self.scm_audio_student_field_reject_mean = float(
+            getattr(
+                args,
+                "scm_audio_student_field_reject_mean",
+                self.scm_student_field_reject_mean,
+            )
         )
         self.scm_loss_fp32 = bool(getattr(args, "scm_loss_fp32", False))
         # Keep normalization selectable for ablations: rCM-style joint whole-g
@@ -2546,13 +2578,21 @@ class LTX2DMD(nn.Module):
         ).to(t_F_theta_video.dtype).view(B, 1, 1, 1, 1)
         video_tangent_raw_mean = video_tangent_abs_mean.mean()
         video_tangent_raw_p99 = video_tangent_abs_p99.mean()
-        video_tangent_reject_mask = torch.zeros(
+        video_tangent_mean_reject_mask = torch.zeros(
             (B, 1, 1, 1, 1),
             device=t_F_theta_video.device,
             dtype=torch.bool,
         )
-        if self.scm_tangent_reject_mean > 0:
-            video_tangent_reject_mask = video_tangent_abs_mean > self.scm_tangent_reject_mean
+        if self.scm_video_tangent_reject_mean > 0:
+            video_tangent_mean_reject_mask = (
+                video_tangent_abs_mean > self.scm_video_tangent_reject_mean
+            )
+        video_tangent_p99_reject_mask = torch.zeros_like(video_tangent_mean_reject_mask)
+        if self.scm_video_tangent_reject_p99 > 0:
+            video_tangent_p99_reject_mask = (
+                video_tangent_abs_p99 > self.scm_video_tangent_reject_p99
+            )
+        video_tangent_reject_mask = video_tangent_mean_reject_mask | video_tangent_p99_reject_mask
         video_tangent_clip_scale = t_F_theta_video.new_tensor(1.0)
         if self.scm_tangent_clip_mean > 0:
             video_tangent_scale = (
@@ -2573,13 +2613,21 @@ class LTX2DMD(nn.Module):
             ).to(t_F_theta_audio.dtype).view(B, 1, 1)
             audio_tangent_raw_mean = audio_tangent_abs_mean.mean()
             audio_tangent_raw_p99 = audio_tangent_abs_p99.mean()
-            audio_tangent_reject_mask = torch.zeros(
+            audio_tangent_mean_reject_mask = torch.zeros(
                 (B, 1, 1),
                 device=t_F_theta_audio.device,
                 dtype=torch.bool,
             )
-            if self.scm_tangent_reject_mean > 0:
-                audio_tangent_reject_mask = audio_tangent_abs_mean > self.scm_tangent_reject_mean
+            if self.scm_audio_tangent_reject_mean > 0:
+                audio_tangent_mean_reject_mask = (
+                    audio_tangent_abs_mean > self.scm_audio_tangent_reject_mean
+                )
+            audio_tangent_p99_reject_mask = torch.zeros_like(audio_tangent_mean_reject_mask)
+            if self.scm_audio_tangent_reject_p99 > 0:
+                audio_tangent_p99_reject_mask = (
+                    audio_tangent_abs_p99 > self.scm_audio_tangent_reject_p99
+                )
+            audio_tangent_reject_mask = audio_tangent_mean_reject_mask | audio_tangent_p99_reject_mask
             audio_tangent_clip_scale = t_F_theta_audio.new_tensor(1.0)
             if self.scm_tangent_clip_mean > 0:
                 audio_tangent_scale = (
@@ -2592,6 +2640,8 @@ class LTX2DMD(nn.Module):
             audio_tangent_raw_mean = None
             audio_tangent_raw_p99 = None
             audio_tangent_clip_scale = None
+            audio_tangent_mean_reject_mask = None
+            audio_tangent_p99_reject_mask = None
             audio_tangent_reject_mask = None
 
         self._trace_scm("student_forward_start")
@@ -2626,6 +2676,15 @@ class LTX2DMD(nn.Module):
             dim=(1, 2, 3, 4),
             keepdim=True,
         )
+        video_student_reject_mask = torch.zeros(
+            (B, 1, 1, 1, 1),
+            device=F_theta_video.device,
+            dtype=torch.bool,
+        )
+        if self.scm_video_student_field_reject_mean > 0:
+            video_student_reject_mask = (
+                video_student_raw_mean > self.scm_video_student_field_reject_mean
+            )
         video_student_clip_scale = F_theta_video.new_tensor(1.0)
         if self.scm_student_field_clip_mean > 0:
             video_student_scale = (
@@ -2642,6 +2701,15 @@ class LTX2DMD(nn.Module):
                 dim=(1, 2),
                 keepdim=True,
             )
+            audio_student_reject_mask = torch.zeros(
+                (B, 1, 1),
+                device=F_theta_audio.device,
+                dtype=torch.bool,
+            )
+            if self.scm_audio_student_field_reject_mean > 0:
+                audio_student_reject_mask = (
+                    audio_student_raw_mean > self.scm_audio_student_field_reject_mean
+                )
             audio_student_clip_scale = F_theta_audio.new_tensor(1.0)
             if self.scm_student_field_clip_mean > 0:
                 audio_student_scale = (
@@ -2654,6 +2722,7 @@ class LTX2DMD(nn.Module):
         else:
             audio_student_raw_mean = None
             audio_student_clip_scale = None
+            audio_student_reject_mask = None
 
         if self.scm_loss_fp32:
             xt_video = xt_video.float()
@@ -2774,6 +2843,7 @@ class LTX2DMD(nn.Module):
                 | torch.isnan(g_video_tangent).flatten(start_dim=1).any(dim=1).view(B, 1, 1, 1, 1)
                 | torch.isnan(F_theta_video).flatten(start_dim=1).any(dim=1).view(B, 1, 1, 1, 1)
                 | video_tangent_reject_mask
+                | video_student_reject_mask
             )
             if has_audio:
                 audio_nan_mask = (
@@ -2781,6 +2851,7 @@ class LTX2DMD(nn.Module):
                     | torch.isnan(g_audio_tangent).flatten(start_dim=1).any(dim=1).view(B, 1, 1)
                     | torch.isnan(F_theta_audio).flatten(start_dim=1).any(dim=1).view(B, 1, 1)
                     | audio_tangent_reject_mask
+                    | audio_student_reject_mask
                 )
             else:
                 audio_nan_mask = None
@@ -2913,6 +2984,12 @@ class LTX2DMD(nn.Module):
             "scm_audio_loss": audio_loss_scm.detach() if has_audio else 0.0,
             "scm_loss_scale": self.scm_loss_scale,
             "scm_weight": self.scm_weight,
+            "scm_video_student_field_reject_mean": self.scm_video_student_field_reject_mean,
+            "scm_audio_student_field_reject_mean": self.scm_audio_student_field_reject_mean,
+            "scm_video_tangent_reject_mean": self.scm_video_tangent_reject_mean,
+            "scm_audio_tangent_reject_mean": self.scm_audio_tangent_reject_mean,
+            "scm_video_tangent_reject_p99": self.scm_video_tangent_reject_p99,
+            "scm_audio_tangent_reject_p99": self.scm_audio_tangent_reject_p99,
             "scm_g_normalization_joint": float(self.scm_g_normalization == "joint"),
             "scm_g_normalization_per_modality": float(
                 self.scm_g_normalization == "per_modality"
@@ -2952,7 +3029,11 @@ class LTX2DMD(nn.Module):
             "alignment/scm_video_consistency_norm": video_consistency_abs_mean.mean().item(),
             "alignment/scm_video_tangent_consistency_ratio": video_tangent_ratio_raw.mean().item(),
             "alignment/scm_video_tangent_ratio_scale": video_tangent_ratio_scale.item(),
+            "alignment/scm_video_student_reject_ratio": video_student_reject_mask.float().mean().item(),
+            "alignment/scm_video_tangent_mean_reject_ratio": video_tangent_mean_reject_mask.float().mean().item(),
+            "alignment/scm_video_tangent_p99_reject_ratio": video_tangent_p99_reject_mask.float().mean().item(),
             "alignment/scm_video_tangent_reject_ratio": video_tangent_reject_mask.float().mean().item(),
+            "alignment/scm_video_reject_ratio": video_nan_mask.float().mean().item(),
         }
         if has_audio:
             log_dict["alignment/scm_audio_teacher_norm"] = torch.mean(torch.abs(F_teacher_audio)).item()
@@ -2985,7 +3066,29 @@ class LTX2DMD(nn.Module):
             log_dict["alignment/scm_audio_tangent_ratio_scale"] = (
                 audio_tangent_ratio_scale.item() if audio_tangent_ratio_scale is not None else 1.0
             )
-            log_dict["alignment/scm_audio_tangent_reject_ratio"] = (audio_tangent_reject_mask.float().mean().item() if audio_tangent_reject_mask is not None else 0.0)
+            log_dict["alignment/scm_audio_student_reject_ratio"] = (
+                audio_student_reject_mask.float().mean().item()
+                if audio_student_reject_mask is not None
+                else 0.0
+            )
+            log_dict["alignment/scm_audio_tangent_mean_reject_ratio"] = (
+                audio_tangent_mean_reject_mask.float().mean().item()
+                if audio_tangent_mean_reject_mask is not None
+                else 0.0
+            )
+            log_dict["alignment/scm_audio_tangent_p99_reject_ratio"] = (
+                audio_tangent_p99_reject_mask.float().mean().item()
+                if audio_tangent_p99_reject_mask is not None
+                else 0.0
+            )
+            log_dict["alignment/scm_audio_tangent_reject_ratio"] = (
+                audio_tangent_reject_mask.float().mean().item()
+                if audio_tangent_reject_mask is not None
+                else 0.0
+            )
+            log_dict["alignment/scm_audio_reject_ratio"] = (
+                audio_nan_mask.float().mean().item() if audio_nan_mask is not None else 0.0
+            )
 
         return total_scm_loss, log_dict
 
