@@ -57,7 +57,10 @@ beta2: 0.999
 weight_decay: 0.01
 dfake_gen_update_ratio: 3
 max_grad_norm: 10.0
-scheduler_type: constant
+scheduler_type: cosine_warmup
+warmup_steps: 0
+max_steps: 800
+min_lr: 2.0e-06
 
 ema_enabled: false
 
@@ -85,7 +88,7 @@ text_encoder_fsdp_wrap_strategy: size
 output_path: /data/datasets/turbodiff_datasets_and_ckpt/my_omniforcing
 log_iters: 1
 train_log_all_scalars: true
-checkpoint_iters: 500
+checkpoint_iters: 100
 skip_initial_checkpoint: true
 
 benchmark_enabled: true
