@@ -227,58 +227,19 @@ class LTX2DMD(nn.Module):
         self.scm_tangent_clip_mean = float(
             getattr(args, "scm_tangent_clip_mean", 0.0)
         )
-        self.scm_tangent_ratio_cap = float(
-            getattr(args, "scm_tangent_ratio_cap", 0.0)
-        )
         self.scm_tangent_reject_mean = float(
             getattr(args, "scm_tangent_reject_mean", 0.0)
         )
-        self.scm_video_tangent_reject_mean = float(
-            getattr(args, "scm_video_tangent_reject_mean", self.scm_tangent_reject_mean)
-        )
-        self.scm_audio_tangent_reject_mean = float(
-            getattr(args, "scm_audio_tangent_reject_mean", self.scm_tangent_reject_mean)
-        )
-        self.scm_tangent_reject_p99 = float(
-            getattr(args, "scm_tangent_reject_p99", 0.0)
-        )
-        self.scm_video_tangent_reject_p99 = float(
-            getattr(args, "scm_video_tangent_reject_p99", self.scm_tangent_reject_p99)
-        )
-        self.scm_audio_tangent_reject_p99 = float(
-            getattr(args, "scm_audio_tangent_reject_p99", self.scm_tangent_reject_p99)
-        )
-        self.scm_student_field_clip_mean = float(
-            getattr(args, "scm_student_field_clip_mean", 0.0)
-        )
-        self.scm_student_field_reject_mean = float(
-            getattr(args, "scm_student_field_reject_mean", 0.0)
-        )
-        self.scm_video_student_field_reject_mean = float(
-            getattr(
-                args,
-                "scm_video_student_field_reject_mean",
-                self.scm_student_field_reject_mean,
-            )
-        )
-        self.scm_audio_student_field_reject_mean = float(
-            getattr(
-                args,
-                "scm_audio_student_field_reject_mean",
-                self.scm_student_field_reject_mean,
-            )
-        )
-        self.scm_loss_fp32 = bool(getattr(args, "scm_loss_fp32", False))
-        # Keep normalization selectable for ablations: rCM-style joint whole-g
-        # normalization is the default, while dual_adaptive is a stabilizing
-        # variant that normalizes consistency/tangent components separately.
+        # Keep the default aligned with the stable 0422_170731 SCM run. That
+        # config did not explicitly set this field, and its observed loss scale
+        # matches per-modality normalization. Joint-state normalization remains
+        # available as an explicit ablation via scm_g_normalization: joint.
         self.scm_g_normalization = str(
-            getattr(args, "scm_g_normalization", "joint")
+            getattr(args, "scm_g_normalization", "per_modality")
         ).lower()
-        if self.scm_g_normalization not in {"dual_adaptive", "joint", "per_modality", "per_frame"}:
+        if self.scm_g_normalization not in {"joint", "per_modality", "per_frame"}:
             raise ValueError(
-                "scm_g_normalization must be 'dual_adaptive', 'joint', "
-                "'per_modality', or 'per_frame', "
+                "scm_g_normalization must be 'joint', 'per_modality', or 'per_frame', "
                 f"got {self.scm_g_normalization!r}"
             )
         self.debug_scm_trace = bool(getattr(args, "debug_scm_trace", False))
@@ -2578,21 +2539,13 @@ class LTX2DMD(nn.Module):
         ).to(t_F_theta_video.dtype).view(B, 1, 1, 1, 1)
         video_tangent_raw_mean = video_tangent_abs_mean.mean()
         video_tangent_raw_p99 = video_tangent_abs_p99.mean()
-        video_tangent_mean_reject_mask = torch.zeros(
+        video_tangent_reject_mask = torch.zeros(
             (B, 1, 1, 1, 1),
             device=t_F_theta_video.device,
             dtype=torch.bool,
         )
-        if self.scm_video_tangent_reject_mean > 0:
-            video_tangent_mean_reject_mask = (
-                video_tangent_abs_mean > self.scm_video_tangent_reject_mean
-            )
-        video_tangent_p99_reject_mask = torch.zeros_like(video_tangent_mean_reject_mask)
-        if self.scm_video_tangent_reject_p99 > 0:
-            video_tangent_p99_reject_mask = (
-                video_tangent_abs_p99 > self.scm_video_tangent_reject_p99
-            )
-        video_tangent_reject_mask = video_tangent_mean_reject_mask | video_tangent_p99_reject_mask
+        if self.scm_tangent_reject_mean > 0:
+            video_tangent_reject_mask = video_tangent_abs_mean > self.scm_tangent_reject_mean
         video_tangent_clip_scale = t_F_theta_video.new_tensor(1.0)
         if self.scm_tangent_clip_mean > 0:
             video_tangent_scale = (
@@ -2613,21 +2566,13 @@ class LTX2DMD(nn.Module):
             ).to(t_F_theta_audio.dtype).view(B, 1, 1)
             audio_tangent_raw_mean = audio_tangent_abs_mean.mean()
             audio_tangent_raw_p99 = audio_tangent_abs_p99.mean()
-            audio_tangent_mean_reject_mask = torch.zeros(
+            audio_tangent_reject_mask = torch.zeros(
                 (B, 1, 1),
                 device=t_F_theta_audio.device,
                 dtype=torch.bool,
             )
-            if self.scm_audio_tangent_reject_mean > 0:
-                audio_tangent_mean_reject_mask = (
-                    audio_tangent_abs_mean > self.scm_audio_tangent_reject_mean
-                )
-            audio_tangent_p99_reject_mask = torch.zeros_like(audio_tangent_mean_reject_mask)
-            if self.scm_audio_tangent_reject_p99 > 0:
-                audio_tangent_p99_reject_mask = (
-                    audio_tangent_abs_p99 > self.scm_audio_tangent_reject_p99
-                )
-            audio_tangent_reject_mask = audio_tangent_mean_reject_mask | audio_tangent_p99_reject_mask
+            if self.scm_tangent_reject_mean > 0:
+                audio_tangent_reject_mask = audio_tangent_abs_mean > self.scm_tangent_reject_mean
             audio_tangent_clip_scale = t_F_theta_audio.new_tensor(1.0)
             if self.scm_tangent_clip_mean > 0:
                 audio_tangent_scale = (
@@ -2640,8 +2585,6 @@ class LTX2DMD(nn.Module):
             audio_tangent_raw_mean = None
             audio_tangent_raw_p99 = None
             audio_tangent_clip_scale = None
-            audio_tangent_mean_reject_mask = None
-            audio_tangent_p99_reject_mask = None
             audio_tangent_reject_mask = None
 
         self._trace_scm("student_forward_start")
@@ -2671,78 +2614,6 @@ class LTX2DMD(nn.Module):
             F_theta_audio = None
             F_theta_audio_sg = None
 
-        video_student_raw_mean = torch.mean(
-            torch.abs(F_theta_video.detach()),
-            dim=(1, 2, 3, 4),
-            keepdim=True,
-        )
-        video_student_reject_mask = torch.zeros(
-            (B, 1, 1, 1, 1),
-            device=F_theta_video.device,
-            dtype=torch.bool,
-        )
-        if self.scm_video_student_field_reject_mean > 0:
-            video_student_reject_mask = (
-                video_student_raw_mean > self.scm_video_student_field_reject_mean
-            )
-        video_student_clip_scale = F_theta_video.new_tensor(1.0)
-        if self.scm_student_field_clip_mean > 0:
-            video_student_scale = (
-                self.scm_student_field_clip_mean
-                / video_student_raw_mean.clamp_min(1e-12)
-            ).clamp(max=1.0)
-            F_theta_video = F_theta_video * video_student_scale
-            F_theta_video_sg = F_theta_video_sg * video_student_scale
-            video_student_clip_scale = video_student_scale.mean()
-
-        if has_audio:
-            audio_student_raw_mean = torch.mean(
-                torch.abs(F_theta_audio.detach()),
-                dim=(1, 2),
-                keepdim=True,
-            )
-            audio_student_reject_mask = torch.zeros(
-                (B, 1, 1),
-                device=F_theta_audio.device,
-                dtype=torch.bool,
-            )
-            if self.scm_audio_student_field_reject_mean > 0:
-                audio_student_reject_mask = (
-                    audio_student_raw_mean > self.scm_audio_student_field_reject_mean
-                )
-            audio_student_clip_scale = F_theta_audio.new_tensor(1.0)
-            if self.scm_student_field_clip_mean > 0:
-                audio_student_scale = (
-                    self.scm_student_field_clip_mean
-                    / audio_student_raw_mean.clamp_min(1e-12)
-                ).clamp(max=1.0)
-                F_theta_audio = F_theta_audio * audio_student_scale
-                F_theta_audio_sg = F_theta_audio_sg * audio_student_scale
-                audio_student_clip_scale = audio_student_scale.mean()
-        else:
-            audio_student_raw_mean = None
-            audio_student_clip_scale = None
-            audio_student_reject_mask = None
-
-        if self.scm_loss_fp32:
-            xt_video = xt_video.float()
-            F_teacher_video = F_teacher_video.float()
-            F_theta_video = F_theta_video.float()
-            F_theta_video_sg = F_theta_video_sg.float()
-            t_F_theta_video = t_F_theta_video.float()
-            cos_t_video = cos_t_video.float()
-            sin_t_video = sin_t_video.float()
-            cs_video = cs_video.float()
-            if has_audio:
-                xt_audio = xt_audio.float()
-                F_teacher_audio = F_teacher_audio.float()
-                F_theta_audio = F_theta_audio.float()
-                F_theta_audio_sg = F_theta_audio_sg.float()
-                t_F_theta_audio = t_F_theta_audio.float()
-                cos_t_audio = cos_t_audio.float()
-                sin_t_audio = sin_t_audio.float()
-                cs_audio = cs_audio.float()
-
         warmup_ratio = (
             1.0
             if self.scm_tangent_warmup == 0
@@ -2752,214 +2623,80 @@ class LTX2DMD(nn.Module):
         video_geom_coeff = cos_t_video * torch.sqrt(
             (1 - warmup_ratio ** 2 * sin_t_video ** 2).clamp_min(0.0)
         )
-        # Dual normalization + adaptive weight (LTX-2 compensation).
-        # Each component independently normalized; gap-driven weight balance.
-        g_video_consistency = -self.scm_consistency_boost * video_geom_coeff * (
-            F_theta_video_sg - F_teacher_video
+        # rCM-style single normalization: g / ||g||
+        g_video = -self.scm_consistency_boost * video_geom_coeff * (F_theta_video_sg - F_teacher_video) - (
+            warmup_ratio * cs_video * xt_video + t_F_theta_video
         )
-        g_video_tangent = -(warmup_ratio * cs_video * xt_video + t_F_theta_video)
-        video_consistency_abs_mean = torch.mean(
-            torch.abs(g_video_consistency.detach()),
-            dim=(1, 2, 3, 4),
-            keepdim=True,
-        )
-        video_gap_abs_mean = torch.mean(
-            torch.abs((F_theta_video_sg - F_teacher_video).detach()),
-            dim=(1, 2, 3, 4),
-            keepdim=True,
-        )
-        video_tangent_abs_mean_for_ratio = torch.mean(
-            torch.abs(g_video_tangent.detach()),
-            dim=(1, 2, 3, 4),
-            keepdim=True,
-        )
-        # Use the unweighted student-teacher field gap as the reference.
-        # The rCM geometry coefficient can be tiny near t=pi/2; capping against
-        # that weighted consistency term would suppress the legitimate tangent
-        # signal at high noise and turn SCM into a mostly-static teacher anchor.
-        video_tangent_ratio_raw = (
-            video_tangent_abs_mean_for_ratio
-            / video_gap_abs_mean.clamp_min(1e-8)
-        )
-        video_tangent_ratio_scale = g_video_tangent.new_tensor(1.0)
-        if self.scm_tangent_ratio_cap > 0:
-            video_tangent_scale = (
-                self.scm_tangent_ratio_cap
-                * video_gap_abs_mean
-                / video_tangent_abs_mean_for_ratio.clamp_min(1e-8)
-            ).clamp(max=1.0)
-            g_video_tangent = g_video_tangent * video_tangent_scale
-            t_F_theta_video = t_F_theta_video * video_tangent_scale
-            video_tangent_ratio_scale = video_tangent_scale.mean()
 
         if has_audio:
             audio_geom_coeff = cos_t_audio * torch.sqrt(
                 (1 - warmup_ratio ** 2 * sin_t_audio ** 2).clamp_min(0.0)
             )
-            g_audio_consistency = -self.scm_consistency_boost * audio_geom_coeff * (
-                F_theta_audio_sg - F_teacher_audio
+            g_audio = -self.scm_consistency_boost * audio_geom_coeff * (F_theta_audio_sg - F_teacher_audio) - (
+                warmup_ratio * cs_audio * xt_audio + t_F_theta_audio
             )
-            g_audio_tangent = -(warmup_ratio * cs_audio * xt_audio + t_F_theta_audio)
-            audio_consistency_abs_mean = torch.mean(
-                torch.abs(g_audio_consistency.detach()),
-                dim=(1, 2),
-                keepdim=True,
-            )
-            audio_gap_abs_mean = torch.mean(
-                torch.abs((F_theta_audio_sg - F_teacher_audio).detach()),
-                dim=(1, 2),
-                keepdim=True,
-            )
-            audio_tangent_abs_mean_for_ratio = torch.mean(
-                torch.abs(g_audio_tangent.detach()),
-                dim=(1, 2),
-                keepdim=True,
-            )
-            audio_tangent_ratio_raw = (
-                audio_tangent_abs_mean_for_ratio
-                / audio_gap_abs_mean.clamp_min(1e-8)
-            )
-            audio_tangent_ratio_scale = g_audio_tangent.new_tensor(1.0)
-            if self.scm_tangent_ratio_cap > 0:
-                audio_tangent_scale = (
-                    self.scm_tangent_ratio_cap
-                    * audio_gap_abs_mean
-                    / audio_tangent_abs_mean_for_ratio.clamp_min(1e-8)
-                ).clamp(max=1.0)
-                g_audio_tangent = g_audio_tangent * audio_tangent_scale
-                t_F_theta_audio = t_F_theta_audio * audio_tangent_scale
-                audio_tangent_ratio_scale = audio_tangent_scale.mean()
         else:
-            g_audio_consistency = None
-            g_audio_tangent = None
-            audio_consistency_abs_mean = None
-            audio_gap_abs_mean = None
-            audio_tangent_ratio_raw = None
-            audio_tangent_ratio_scale = None
+            g_audio = None
 
         with torch.no_grad():
             video_nan_mask = (
-                torch.isnan(g_video_consistency).flatten(start_dim=1).any(dim=1).view(B, 1, 1, 1, 1)
-                | torch.isnan(g_video_tangent).flatten(start_dim=1).any(dim=1).view(B, 1, 1, 1, 1)
+                torch.isnan(g_video).flatten(start_dim=1).any(dim=1).view(B, 1, 1, 1, 1)
                 | torch.isnan(F_theta_video).flatten(start_dim=1).any(dim=1).view(B, 1, 1, 1, 1)
                 | video_tangent_reject_mask
-                | video_student_reject_mask
             )
             if has_audio:
                 audio_nan_mask = (
-                    torch.isnan(g_audio_consistency).flatten(start_dim=1).any(dim=1).view(B, 1, 1)
-                    | torch.isnan(g_audio_tangent).flatten(start_dim=1).any(dim=1).view(B, 1, 1)
+                    torch.isnan(g_audio).flatten(start_dim=1).any(dim=1).view(B, 1, 1)
                     | torch.isnan(F_theta_audio).flatten(start_dim=1).any(dim=1).view(B, 1, 1)
                     | audio_tangent_reject_mask
-                    | audio_student_reject_mask
                 )
             else:
                 audio_nan_mask = None
 
-        g_video_consistency = torch.where(video_nan_mask, torch.zeros_like(g_video_consistency), g_video_consistency)
-        g_video_tangent = torch.where(video_nan_mask, torch.zeros_like(g_video_tangent), g_video_tangent)
+        g_video_pre_norm = g_video.detach()
+        g_video = torch.where(video_nan_mask, torch.zeros_like(g_video), g_video)
         F_theta_video = torch.where(video_nan_mask, torch.zeros_like(F_theta_video), F_theta_video)
         F_theta_video_sg = torch.where(video_nan_mask, torch.zeros_like(F_theta_video_sg), F_theta_video_sg)
 
         if has_audio:
-            g_audio_consistency = torch.where(audio_nan_mask, torch.zeros_like(g_audio_consistency), g_audio_consistency)
-            g_audio_tangent = torch.where(audio_nan_mask, torch.zeros_like(g_audio_tangent), g_audio_tangent)
+            g_audio_pre_norm = g_audio.detach()
+            g_audio = torch.where(audio_nan_mask, torch.zeros_like(g_audio), g_audio)
             F_theta_audio = torch.where(audio_nan_mask, torch.zeros_like(F_theta_audio), F_theta_audio)
             F_theta_audio_sg = torch.where(audio_nan_mask, torch.zeros_like(F_theta_audio_sg), F_theta_audio_sg)
-
-        g_video_pre_norm = (g_video_consistency + g_video_tangent).detach()
-        if has_audio:
-            g_audio_pre_norm = (g_audio_consistency + g_audio_tangent).detach()
         else:
             g_audio_pre_norm = None
 
         video_w, audio_w = self.get_loss_weights()
         active_audio = has_audio and float(audio_w) != 0.0
 
+        # rCM-style: single L2 norm per sample
         if self.scm_g_normalization == "joint":
-            g_video_raw = g_video_consistency + g_video_tangent
-            video_joint_norm = (
-                torch.sqrt(g_video_raw.double().square().sum(dim=(1, 2, 3, 4), keepdim=False))
-                .view(B, 1, 1, 1, 1) + 0.1
-            )
-            g_video = g_video_raw.double() / video_joint_norm
-        elif self.scm_g_normalization == "dual_adaptive":
-            # Independent normalization per component.
-            video_cons_norm = (
-                torch.sqrt(g_video_consistency.double().square().sum(dim=(1, 2, 3, 4), keepdim=False))
-                .view(B, 1, 1, 1, 1) + 0.1
-            )
-            video_tan_norm = (
-                torch.sqrt(g_video_tangent.double().square().sum(dim=(1, 2, 3, 4), keepdim=False))
-                .view(B, 1, 1, 1, 1) + 0.1
-            )
-
-            # Adaptive weighting: gap large -> consistency weight high.
-            with torch.no_grad():
-                video_gap_norm = torch.sqrt(
-                    (F_theta_video_sg.double() - F_teacher_video.double())
-                    .square().sum(dim=(1, 2, 3, 4), keepdim=True)
-                )
-                video_cons_weight = video_gap_norm / (video_gap_norm + 0.1)
-                video_tan_weight = 1.0 - video_cons_weight
-
-            g_video = (
-                video_cons_weight * g_video_consistency.double() / video_cons_norm
-                + video_tan_weight * g_video_tangent.double() / video_tan_norm
-            )
-        elif self.scm_g_normalization in ("per_modality", "per_frame"):
-            # Single norm, per-modality: each modality independently normalized.
-            g_video_raw = g_video_consistency + g_video_tangent
-            video_g_norm = (
-                torch.sqrt(g_video_raw.double().square().sum(dim=(1, 2, 3, 4), keepdim=False))
-                .view(B, 1, 1, 1, 1) + 0.1
-            )
-            g_video = g_video_raw.double() / video_g_norm
+            joint_g_norm_sq = g_video.double().square().sum(dim=(1, 2, 3, 4), keepdim=False)
+            if active_audio:
+                joint_g_norm_sq = joint_g_norm_sq + g_audio.double().square().sum(dim=(1, 2), keepdim=False)
+            video_g_norm = torch.sqrt(joint_g_norm_sq).view(B, 1, 1, 1, 1) + 0.1
+            audio_g_norm = video_g_norm.view(B, 1, 1)
         else:
-            raise NotImplementedError(
-                f"SCM normalization {self.scm_g_normalization!r} is not implemented "
-                "for current AV loss path"
+            video_g_norm = (
+                torch.sqrt(g_video.double().square().sum(dim=(1, 2, 3, 4), keepdim=False))
+                .view(B, 1, 1, 1, 1) + 0.1
             )
+            if active_audio:
+                audio_g_norm = (
+                    torch.sqrt(g_audio.double().square().sum(dim=(1, 2), keepdim=False))
+                    .view(B, 1, 1) + 0.1
+                )
+            else:
+                audio_g_norm = video_g_norm.view(B, 1, 1)
+
+        g_video = g_video.double() / video_g_norm
 
         video_loss_scm_per_sample = (
             (F_theta_video.double() - F_theta_video_sg.double() - g_video) ** 2
         ).sum(dim=(1, 2, 3, 4))
 
         if active_audio:
-            g_audio_raw = g_audio_consistency + g_audio_tangent
-            if self.scm_g_normalization == "joint":
-                audio_norm_val = (
-                    torch.sqrt(g_audio_raw.double().square().sum(dim=(1, 2), keepdim=False))
-                    .view(B, 1, 1) + 0.1
-                )
-                g_audio = g_audio_raw.double() / audio_norm_val
-            elif self.scm_g_normalization in ("per_modality", "per_frame"):
-                audio_norm_val = (
-                    torch.sqrt(g_audio_raw.double().square().sum(dim=(1, 2), keepdim=False))
-                    .view(B, 1, 1) + 0.1
-                )
-                g_audio = g_audio_raw.double() / audio_norm_val
-            else:
-                audio_cons_norm = (
-                    torch.sqrt(g_audio_consistency.double().square().sum(dim=(1, 2), keepdim=False))
-                    .view(B, 1, 1) + 0.1
-                )
-                audio_tan_norm = (
-                    torch.sqrt(g_audio_tangent.double().square().sum(dim=(1, 2), keepdim=False))
-                    .view(B, 1, 1) + 0.1
-                )
-                with torch.no_grad():
-                    audio_gap_norm = torch.sqrt(
-                        (F_theta_audio_sg.double() - F_teacher_audio.double())
-                        .square().sum(dim=(1, 2), keepdim=True)
-                    )
-                    audio_cons_weight = audio_gap_norm / (audio_gap_norm + 0.1)
-                    audio_tan_weight = 1.0 - audio_cons_weight
-
-                g_audio = (
-                    audio_cons_weight * g_audio_consistency.double() / audio_cons_norm
-                    + audio_tan_weight * g_audio_tangent.double() / audio_tan_norm
-                )
+            g_audio = g_audio.double() / audio_g_norm
             audio_loss_scm_per_sample = (
                 (F_theta_audio.double() - F_theta_audio_sg.double() - g_audio) ** 2
             ).sum(dim=(1, 2))
@@ -2984,12 +2721,6 @@ class LTX2DMD(nn.Module):
             "scm_audio_loss": audio_loss_scm.detach() if has_audio else 0.0,
             "scm_loss_scale": self.scm_loss_scale,
             "scm_weight": self.scm_weight,
-            "scm_video_student_field_reject_mean": self.scm_video_student_field_reject_mean,
-            "scm_audio_student_field_reject_mean": self.scm_audio_student_field_reject_mean,
-            "scm_video_tangent_reject_mean": self.scm_video_tangent_reject_mean,
-            "scm_audio_tangent_reject_mean": self.scm_audio_tangent_reject_mean,
-            "scm_video_tangent_reject_p99": self.scm_video_tangent_reject_p99,
-            "scm_audio_tangent_reject_p99": self.scm_audio_tangent_reject_p99,
             "scm_g_normalization_joint": float(self.scm_g_normalization == "joint"),
             "scm_g_normalization_per_modality": float(
                 self.scm_g_normalization == "per_modality"
@@ -2997,11 +2728,6 @@ class LTX2DMD(nn.Module):
             "scm_g_normalization_per_frame": float(
                 self.scm_g_normalization == "per_frame"
             ),
-            "scm_g_normalization_dual_adaptive": float(
-                self.scm_g_normalization == "dual_adaptive"
-            ),
-            "scm_tangent_ratio_cap": self.scm_tangent_ratio_cap,
-            "scm_loss_fp32": float(self.scm_loss_fp32),
             "scm_warmup_ratio": warmup_ratio,
             "video_loss_weight": video_w,
             "audio_loss_weight": audio_w,
@@ -3009,8 +2735,6 @@ class LTX2DMD(nn.Module):
             "alignment/scm_trig_time_mean": trig_time.float().mean().item(),
             "alignment/scm_video_teacher_norm": torch.mean(torch.abs(F_teacher_video)).item(),
             "alignment/scm_video_student_norm": torch.mean(torch.abs(F_theta_video_sg)).item(),
-            "alignment/scm_video_student_raw_norm": video_student_raw_mean.mean().item(),
-            "alignment/scm_video_student_clip_scale": video_student_clip_scale.item(),
             "alignment/scm_video_g_norm": torch.mean(torch.abs(g_video_pre_norm)).item(),
             "alignment/scm_video_g_post_norm": torch.mean(torch.abs(g_video)).item(),
             "alignment/scm_video_loss_share": torch.mean(
@@ -3026,22 +2750,11 @@ class LTX2DMD(nn.Module):
             "alignment/scm_video_tangent_p99": video_tangent_raw_p99.item(),
             "alignment/scm_video_tangent_raw_norm": video_tangent_raw_mean.item(),
             "alignment/scm_video_tangent_clip_scale": video_tangent_clip_scale.item(),
-            "alignment/scm_video_consistency_norm": video_consistency_abs_mean.mean().item(),
-            "alignment/scm_video_tangent_consistency_ratio": video_tangent_ratio_raw.mean().item(),
-            "alignment/scm_video_tangent_ratio_scale": video_tangent_ratio_scale.item(),
-            "alignment/scm_video_student_reject_ratio": video_student_reject_mask.float().mean().item(),
-            "alignment/scm_video_tangent_mean_reject_ratio": video_tangent_mean_reject_mask.float().mean().item(),
-            "alignment/scm_video_tangent_p99_reject_ratio": video_tangent_p99_reject_mask.float().mean().item(),
             "alignment/scm_video_tangent_reject_ratio": video_tangent_reject_mask.float().mean().item(),
-            "alignment/scm_video_reject_ratio": video_nan_mask.float().mean().item(),
         }
         if has_audio:
             log_dict["alignment/scm_audio_teacher_norm"] = torch.mean(torch.abs(F_teacher_audio)).item()
             log_dict["alignment/scm_audio_student_norm"] = torch.mean(torch.abs(F_theta_audio_sg)).item()
-            log_dict["alignment/scm_audio_student_raw_norm"] = audio_student_raw_mean.mean().item()
-            log_dict["alignment/scm_audio_student_clip_scale"] = (
-                audio_student_clip_scale.item() if audio_student_clip_scale is not None else 1.0
-            )
             log_dict["alignment/scm_audio_g_norm"] = torch.mean(torch.abs(g_audio_pre_norm)).item() if g_audio_pre_norm is not None else 0.0
             log_dict["alignment/scm_audio_g_post_norm"] = torch.mean(torch.abs(g_audio)).item() if g_audio is not None else 0.0
             log_dict["alignment/scm_audio_loss_share"] = torch.mean(
@@ -3057,38 +2770,7 @@ class LTX2DMD(nn.Module):
             log_dict["alignment/scm_audio_tangent_p99"] = audio_tangent_raw_p99.item() if audio_tangent_raw_p99 is not None else 0.0
             log_dict["alignment/scm_audio_tangent_raw_norm"] = audio_tangent_raw_mean.item() if audio_tangent_raw_mean is not None else 0.0
             log_dict["alignment/scm_audio_tangent_clip_scale"] = (audio_tangent_clip_scale.item() if audio_tangent_clip_scale is not None else 1.0)
-            log_dict["alignment/scm_audio_consistency_norm"] = (
-                audio_consistency_abs_mean.mean().item() if audio_consistency_abs_mean is not None else 0.0
-            )
-            log_dict["alignment/scm_audio_tangent_consistency_ratio"] = (
-                audio_tangent_ratio_raw.mean().item() if audio_tangent_ratio_raw is not None else 0.0
-            )
-            log_dict["alignment/scm_audio_tangent_ratio_scale"] = (
-                audio_tangent_ratio_scale.item() if audio_tangent_ratio_scale is not None else 1.0
-            )
-            log_dict["alignment/scm_audio_student_reject_ratio"] = (
-                audio_student_reject_mask.float().mean().item()
-                if audio_student_reject_mask is not None
-                else 0.0
-            )
-            log_dict["alignment/scm_audio_tangent_mean_reject_ratio"] = (
-                audio_tangent_mean_reject_mask.float().mean().item()
-                if audio_tangent_mean_reject_mask is not None
-                else 0.0
-            )
-            log_dict["alignment/scm_audio_tangent_p99_reject_ratio"] = (
-                audio_tangent_p99_reject_mask.float().mean().item()
-                if audio_tangent_p99_reject_mask is not None
-                else 0.0
-            )
-            log_dict["alignment/scm_audio_tangent_reject_ratio"] = (
-                audio_tangent_reject_mask.float().mean().item()
-                if audio_tangent_reject_mask is not None
-                else 0.0
-            )
-            log_dict["alignment/scm_audio_reject_ratio"] = (
-                audio_nan_mask.float().mean().item() if audio_nan_mask is not None else 0.0
-            )
+            log_dict["alignment/scm_audio_tangent_reject_ratio"] = (audio_tangent_reject_mask.float().mean().item() if audio_tangent_reject_mask is not None else 0.0)
 
         return total_scm_loss, log_dict
 
