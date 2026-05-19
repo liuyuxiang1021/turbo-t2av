@@ -101,7 +101,7 @@ skip_initial_checkpoint: true
 benchmark_enabled: true
 benchmark_min_step: 0
 benchmark_iters: 50
-teacher_benchmark_enabled: true     # skip teacher refs for faster startup; enable for debug
+teacher_benchmark_enabled: false    # OOM during multi-step teacher refs
 teacher_benchmark_num_inference_steps: 4
 teacher_benchmark_video_guidance_scale: 5.0
 teacher_benchmark_audio_guidance_scale: 5.0
