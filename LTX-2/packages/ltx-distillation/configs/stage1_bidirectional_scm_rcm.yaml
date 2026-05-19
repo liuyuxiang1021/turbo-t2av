@@ -34,14 +34,14 @@ scm_loss_scale: 100.0
 scm_p_G_mean: 1.5               # rCM 14B: median sigma=exp(1.5)≈4.5, noise-dominant
 scm_p_G_std: 1.6
 scm_consistency_boost: 1.0       # rCM-style single norm, no boost needed
-scm_fd_type: 0                   # full JVP (exact sCM)
+scm_fd_type: 1                   # semi-continuous: spatial JVP + finite-diff time derivative
 scm_fd_size: 0.0001
 scm_tangent_warmup: 0            # match 0517_112904 fast-trend run
-scm_strict_rcm: true
+scm_strict_rcm: false            # fd_type=1 ablation
 scm_diagnostic_mode: false
 scm_tangent_clip_mean: 20.0        # p99 clip: exact 112904 setting
 scm_student_field_clip_mean: 0     # not in 112904
-scm_loss_fp32: false               # not in 112904
+scm_loss_fp32: true                # keep SCM target construction/loss in fp32 for fd_type=1 test
 scm_time_eps: 0.0001
 scm_jvp_impl: internal
 scm_g_normalization: per_modality  # separate norm per modality; AV both contribute
