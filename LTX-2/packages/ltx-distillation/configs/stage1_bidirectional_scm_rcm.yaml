@@ -1,5 +1,5 @@
-# Stage 1: SCM + DMD — rCM-style full distillation recipe
-# DMD provides the distribution anchor; SCM keeps flow consistency.
+# Stage 1: SCM-only, fast LR, tangent/consistency ratio capped.
+# Tests whether previous collapse was caused by tangent-dominated g direction.
 
 checkpoint_path: /data/datasets/turbodiff_datasets_and_ckpt/omniforcing/ltx-2-19b-dev.safetensors
 gemma_path: /data/datasets/turbodiff_datasets_and_ckpt/omniforcing/gemma-3-12b-it-qat-q4_0-unquantized
@@ -8,10 +8,10 @@ model_name: ltx2_av
 
 generator_grad: {model: true}
 real_score_grad: {model: false}
-fake_score_grad: {model: true}
+fake_score_grad: {model: false}
 
-dmd_enabled: true
-critic_enabled: true
+dmd_enabled: false
+critic_enabled: false
 dmd_style: rcm_trig
 dmd_p_D_shift: 5.0
 backward_trig_timesteps: [1.5, 1.4, 1.0]
@@ -36,19 +36,20 @@ scm_p_G_std: 1.6
 scm_consistency_boost: 1.0       # rCM-style single norm, no boost needed
 scm_fd_type: 0                   # full JVP (exact sCM)
 scm_fd_size: 0.0001
-scm_tangent_warmup: 0            # no warmup needed with boost+clip
+scm_tangent_warmup: 0            # match 0517_112904 fast-trend run
 scm_strict_rcm: true
 scm_diagnostic_mode: false
-scm_tangent_clip_mean: 20.0        # p99 clip: exact match 112904
+scm_tangent_clip_mean: 20.0        # p99 outlier guard from 0517_112904
+scm_tangent_ratio_cap: 2.0         # keep tangent from dominating consistency
 scm_student_field_clip_mean: 0     # not in 112904
 scm_loss_fp32: false               # not in 112904
 scm_time_eps: 0.0001
 scm_jvp_impl: internal
 scm_g_normalization: per_modality  # separate norm per modality; AV both contribute
 video_loss_weight: 1.0
-audio_loss_weight: 1              # full AV
+audio_loss_weight: 1              # full AV, as in 0517_112904
 
-# ===== Optimizer (rCM 14B config) =====
+# ===== Optimizer =====
 lr: 2.0e-05
 generator_lr: 2.0e-05
 critic_lr: 2.0e-06
@@ -56,11 +57,11 @@ beta1: 0.0
 beta2: 0.999
 weight_decay: 0.01
 dfake_gen_update_ratio: 3
-max_grad_norm: 10.0
+max_grad_norm: 99999.0
 scheduler_type: cosine_warmup
 warmup_steps: 0
 max_steps: 800
-min_lr: 2.0e-06
+min_lr: 2.0e-05
 
 ema_enabled: false
 

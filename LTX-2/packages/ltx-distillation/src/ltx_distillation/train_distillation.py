@@ -206,7 +206,7 @@ class Trainer:
 
         # Learning rate schedulers
         self.generator_scheduler = self._create_lr_scheduler(self.generator_optimizer)
-        self.critic_scheduler = self._create_lr_scheduler(self.critic_optimizer)
+        self.critic_scheduler = self._create_lr_scheduler(self.critic_optimizer) if self.critic_optimizer is not None else None
 
         # Dataloader
         self._init_dataloader()
