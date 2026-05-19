@@ -2,7 +2,7 @@
 # Tests whether collapse is driven primarily by LTX time branch parameters.
 
 checkpoint_path: /data/datasets/turbodiff_datasets_and_ckpt/omniforcing/ltx-2-19b-dev.safetensors
-resume_checkpoint: /data/datasets/turbodiff_datasets_and_ckpt/my_omniforcing/0519_211519_scm_from_dcm_warmup/checkpoints/checkpoint_000700/model.pth
+resume_checkpoint: /data/datasets/turbodiff_datasets_and_ckpt/my_omniforcing/0520_005100_scm_from_dcm_warmup/checkpoints/checkpoint_000800/model.pth
 gemma_path: /data/datasets/turbodiff_datasets_and_ckpt/omniforcing/gemma-3-12b-it-qat-q4_0-unquantized
 
 model_name: ltx2_av
@@ -66,7 +66,7 @@ dfake_gen_update_ratio: 3
 max_grad_norm: 99999.0
 scheduler_type: cosine_warmup
 warmup_steps: 0
-max_steps: 800
+max_steps: 3000
 min_lr: 1.0e-05
 
 ema_enabled: false
@@ -95,7 +95,7 @@ text_encoder_fsdp_wrap_strategy: size
 output_path: /data/datasets/turbodiff_datasets_and_ckpt/my_omniforcing
 log_iters: 1
 train_log_all_scalars: true
-checkpoint_iters: 10
+checkpoint_iters: 100
 skip_initial_checkpoint: true
 
 benchmark_enabled: true
