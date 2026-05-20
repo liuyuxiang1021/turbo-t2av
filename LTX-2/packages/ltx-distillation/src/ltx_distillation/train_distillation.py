@@ -232,7 +232,7 @@ class Trainer:
                 print(f"[Resume] Loading causal DMD checkpoint from {resume_ckpt}")
             ckpt = torch.load(resume_ckpt, map_location="cpu")
             self.dmd.generator.load_state_dict(ckpt["generator"])
-            if self.dmd.fake_score is not None and "critic" in ckpt:
+            if self.dmd.fake_score is not None and ckpt.get("critic") is not None:
                 self.dmd.fake_score.load_state_dict(ckpt["critic"])
             if self.dmd.ema_enabled and "generator_ema" in ckpt and ckpt["generator_ema"] is not None:
                 self.dmd._ema_state_dict = {k: v.cpu() for k, v in ckpt["generator_ema"].items()}
@@ -417,6 +417,8 @@ class Trainer:
             def lr_lambda(step):
                 if step < warmup_steps:
                     return step / max(1, warmup_steps)
+                if max_steps is None:
+                    return 1.0
                 else:
                     progress = (step - warmup_steps) / max(1, max_steps - warmup_steps)
                     progress = min(progress, 1.0)
@@ -1065,7 +1067,7 @@ class Trainer:
                 else self.step % self.benchmark_iters == 0
             )
             and not getattr(config, "no_visualize", False)
-            and not pretrain_benchmark_ran
+            and not (self.step == 0 and pretrain_benchmark_ran)
         )
 
         if BENCHMARK:
@@ -1991,9 +1993,18 @@ class Trainer:
             if max_steps and self.step >= max_steps:
                 break
 
+        if not getattr(self.config, "no_save", False):
+            # FSDP full-state-dict gathering is collective.  Periodic
+            # checkpointing calls save() on every rank; final checkpointing must
+            # do the same or rank 0 will block in the all-gather while the other
+            # ranks skip directly to shutdown.
+            torch.cuda.synchronize()
+            self.save()
+            torch.cuda.synchronize()
+            torch.cuda.empty_cache()
+            barrier()
+
         if self.is_main_process:
-            if not getattr(self.config, "no_save", False):
-                self.save()
             self._safe_wandb_finish()
 
 
