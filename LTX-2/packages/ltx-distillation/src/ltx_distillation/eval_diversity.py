@@ -14,6 +14,8 @@ import os
 import sys
 import math
 import argparse
+import gc
+from contextlib import contextmanager, nullcontext
 import torch
 import torch.distributed as dist
 from omegaconf import OmegaConf
@@ -26,6 +28,50 @@ from ltx_distillation.inference.bidirectional_pipeline import BidirectionalAVInf
 from ltx_distillation.train_distillation import compute_latent_shapes
 
 
+@contextmanager
+def _model_init_lock(lock_path: str | None, shard_id: int):
+    if lock_path is None:
+        with nullcontext():
+            yield
+        return
+
+    import fcntl
+
+    os.makedirs(os.path.dirname(os.path.abspath(lock_path)), exist_ok=True)
+    with open(lock_path, "w", encoding="utf-8") as lock_file:
+        print(f"[Eval] shard={shard_id} waiting for model-init lock {lock_path}", flush=True)
+        fcntl.flock(lock_file, fcntl.LOCK_EX)
+        print(f"[Eval] shard={shard_id} acquired model-init lock", flush=True)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock_file, fcntl.LOCK_UN)
+            print(f"[Eval] shard={shard_id} released model-init lock", flush=True)
+
+
+def _load_checkpoint(path: str):
+    load_kwargs = {"map_location": "cpu", "mmap": True}
+    try:
+        return torch.load(path, **load_kwargs)
+    except (TypeError, RuntimeError) as exc:
+        if isinstance(exc, RuntimeError) and "mmap" not in str(exc).lower():
+            raise
+        load_kwargs.pop("mmap", None)
+        return torch.load(path, **load_kwargs)
+
+
+def _init_runtime(args):
+    if "RANK" in os.environ and not args.single_process:
+        rank, world_size, local_rank = launch_distributed_job()
+        return rank, world_size, local_rank, True
+
+    if args.shard_id < 0 or args.shard_id >= args.num_shards:
+        raise ValueError("--shard_id must be in [0, --num_shards)")
+    if torch.cuda.is_available():
+        torch.cuda.set_device(0)
+    return args.shard_id, args.num_shards, 0, False
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config_path", type=str, required=True)
@@ -33,10 +79,15 @@ def main():
     parser.add_argument("--output_dir", type=str, required=True)
     parser.add_argument("--num_seeds", type=int, default=5)
     parser.add_argument("--num_prompts", type=int, default=8)
+    parser.add_argument("--num_shards", type=int, default=1)
+    parser.add_argument("--shard_id", type=int, default=0)
+    parser.add_argument("--single_process", action="store_true", default=False)
+    parser.add_argument("--init_lock_path", type=str, default=None)
+    parser.add_argument("--no_init_lock", action="store_true", default=False)
     args = parser.parse_args()
 
-    # ── Distributed init ──────────────────────────────────────────────
-    rank, world_size, local_rank = launch_distributed_job()
+    # ── Runtime init ─────────────────────────────────────────────────
+    rank, world_size, local_rank, is_distributed = _init_runtime(args)
     device = torch.cuda.current_device()
     is_main = rank == 0
 
@@ -45,74 +96,77 @@ def main():
         config.resume_checkpoint = args.checkpoint_path
 
     dtype = torch.bfloat16 if config.mixed_precision else torch.float32
+    init_lock_path = None if args.no_init_lock else args.init_lock_path
+    if init_lock_path is None and not is_distributed and args.num_shards > 1:
+        init_lock_path = os.path.join(args.output_dir, ".model_init.lock")
 
-    # ── Build generator only (no real_score / fake_score) ────────────
-    if is_main:
-        print("[Eval] Building generator wrapper...")
-    generator = create_ltx2_trig_wrapper(
-        checkpoint_path=config.checkpoint_path,
-        gemma_path=config.gemma_path,
-        device=torch.device("cpu"),
-        dtype=dtype,
-        video_height=config.video_height,
-        video_width=config.video_width,
-    )
-    # Move model to GPU
-    generator.model = generator.model.to(device=device, dtype=dtype)
+    with _model_init_lock(init_lock_path, args.shard_id):
+        # ── Build generator only (no real_score / fake_score) ────────
+        print(f"[Eval] rank={rank} building generator wrapper...", flush=True)
+        generator = create_ltx2_trig_wrapper(
+            checkpoint_path=config.checkpoint_path,
+            gemma_path=config.gemma_path,
+            device=torch.device("cpu"),
+            dtype=dtype,
+            video_height=config.video_height,
+            video_width=config.video_width,
+        )
+        # Move model to GPU
+        generator.model = generator.model.to(device=device, dtype=dtype)
 
-    # ── Build text encoder ───────────────────────────────────────────
-    if is_main:
-        print("[Eval] Building text encoder...")
-    text_encoder = create_text_encoder_wrapper(
-        checkpoint_path=config.checkpoint_path,
-        gemma_path=config.gemma_path,
-        device=device,
-        dtype=dtype,
-    )
+        # ── Build text encoder ───────────────────────────────────────
+        print(f"[Eval] rank={rank} building text encoder...", flush=True)
+        text_encoder = create_text_encoder_wrapper(
+            checkpoint_path=config.checkpoint_path,
+            gemma_path=config.gemma_path,
+            device=device,
+            dtype=dtype,
+        )
 
-    # ── Build VAEs ───────────────────────────────────────────────────
-    if is_main:
-        print("[Eval] Building VAEs...")
-    video_vae, audio_vae = create_vae_wrappers(
-        checkpoint_path=config.checkpoint_path,
-        device=device,
-        dtype=dtype,
-    )
+        # ── Build VAEs ───────────────────────────────────────────────
+        print(f"[Eval] rank={rank} building VAEs...", flush=True)
+        video_vae, audio_vae = create_vae_wrappers(
+            checkpoint_path=config.checkpoint_path,
+            device=device,
+            dtype=dtype,
+        )
 
-    # ── FSDP wrap generator + text encoder ───────────────────────────
-    try:
-        from ltx_core.model.transformer.transformer import BasicAVTransformerBlock
-        transformer_module = (BasicAVTransformerBlock,)
-    except Exception:
-        transformer_module = None
+        if is_distributed:
+            # ── FSDP wrap generator + text encoder ───────────────────
+            try:
+                from ltx_core.model.transformer.transformer import BasicAVTransformerBlock
+                transformer_module = (BasicAVTransformerBlock,)
+            except Exception:
+                transformer_module = None
 
-    generator = fsdp_wrap(
-        generator,
-        sharding_strategy=config.sharding_strategy,
-        mixed_precision=config.mixed_precision,
-        wrap_strategy=config.generator_fsdp_wrap_strategy,
-        transformer_module=transformer_module,
-        cpu_offload=False,
-        use_orig_params=True,
-    )
-    text_encoder = fsdp_wrap(
-        text_encoder,
-        sharding_strategy=config.sharding_strategy,
-        mixed_precision=config.mixed_precision,
-        wrap_strategy=config.text_encoder_fsdp_wrap_strategy,
-        cpu_offload=False,
-        use_orig_params=True,
-    )
+            generator = fsdp_wrap(
+                generator,
+                sharding_strategy=config.sharding_strategy,
+                mixed_precision=config.mixed_precision,
+                wrap_strategy=config.generator_fsdp_wrap_strategy,
+                transformer_module=transformer_module,
+                cpu_offload=False,
+                use_orig_params=True,
+            )
+            text_encoder = fsdp_wrap(
+                text_encoder,
+                sharding_strategy=config.sharding_strategy,
+                mixed_precision=config.mixed_precision,
+                wrap_strategy=config.text_encoder_fsdp_wrap_strategy,
+                cpu_offload=False,
+                use_orig_params=True,
+            )
 
-    # ── Load checkpoint generator weights (after FSDP wrap) ─────────
-    ckpt_path = config.resume_checkpoint
-    if is_main:
-        print(f"[Eval] Loading checkpoint from {ckpt_path}")
-    ckpt = torch.load(ckpt_path, map_location="cpu")
-    gen_sd = ckpt["generator"]
-    generator.load_state_dict(gen_sd, strict=False)
-    if is_main:
-        print(f"[Eval] Loaded generator from step {ckpt.get('completed_step', '?')}")
+        # ── Load checkpoint generator weights ────────────────────────
+        ckpt_path = config.resume_checkpoint
+        print(f"[Eval] rank={rank} loading checkpoint from {ckpt_path}", flush=True)
+        ckpt = _load_checkpoint(ckpt_path)
+        gen_sd = ckpt["generator"]
+        generator.load_state_dict(gen_sd, strict=False)
+        print(f"[Eval] rank={rank} loaded generator from step {ckpt.get('completed_step', '?')}", flush=True)
+        del ckpt, gen_sd
+        gc.collect()
+        torch.cuda.empty_cache()
 
     # ── Denoising schedule (rcm_trig: [π/2, backward_timesteps..., 0]) ──
     backward_trig = [float(t) for t in getattr(config, "backward_trig_timesteps", [1.5, 1.4, 1.0])]
@@ -154,6 +208,7 @@ def main():
     os.makedirs(args.output_dir, exist_ok=True)
 
     # ── Inference loop ───────────────────────────────────────────────
+    completed_tasks = 0
     for prompt_idx, prompt_text in enumerate(prompts):
         for seed_idx in range(args.num_seeds):
             task_id = prompt_idx * args.num_seeds + seed_idx
@@ -203,11 +258,20 @@ def main():
 
             if is_main:
                 print(f"  -> {out_path}")
+            completed_tasks += 1
 
-    dist.barrier()
-    if is_main:
+    if is_distributed:
+        dist.barrier()
+    if is_distributed and is_main:
         print(f"[Eval] Done. {total_tasks} videos saved to {args.output_dir}")
-    dist.destroy_process_group()
+    elif not is_distributed:
+        print(
+            f"[Eval] shard={args.shard_id}/{args.num_shards} done. "
+            f"{completed_tasks}/{total_tasks} assigned videos saved to {args.output_dir}",
+            flush=True,
+        )
+    if is_distributed:
+        dist.destroy_process_group()
 
 
 if __name__ == "__main__":
