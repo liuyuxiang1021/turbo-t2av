@@ -1,24 +1,24 @@
-# Stage 1: SCM-only with damped time-modulation LR.
-# Tests whether collapse is driven primarily by LTX time branch parameters.
+# Stage 2: SCM+DMD from SCM checkpoint 3000.
+# SCM-only stable to 3000, now add DMD for quality improvement.
 
 checkpoint_path: /data/datasets/turbodiff_datasets_and_ckpt/omniforcing/ltx-2-19b-dev.safetensors
-resume_checkpoint: /data/datasets/turbodiff_datasets_and_ckpt/my_omniforcing/0520_005100_scm_from_dcm_warmup/checkpoints/checkpoint_000800/model.pth
+resume_checkpoint: /data/datasets/turbodiff_datasets_and_ckpt/my_omniforcing/0520_011955_scm_from_dcm_warmup/checkpoints/checkpoint_003000/model.pth
 gemma_path: /data/datasets/turbodiff_datasets_and_ckpt/omniforcing/gemma-3-12b-it-qat-q4_0-unquantized
 
 model_name: ltx2_av
 
 generator_grad: {model: true}
 real_score_grad: {model: false}
-fake_score_grad: {model: false}
+fake_score_grad: {model: true}
 
-dmd_enabled: false
-critic_enabled: false
+dmd_enabled: true
+critic_enabled: true
 dmd_style: rcm_trig
 dmd_p_D_shift: 5.0
 backward_trig_timesteps: [1.5, 1.4, 1.0]
 denoising_step_list: [1000, 757, 522, 0]
 num_train_timestep: 1000
-real_video_guidance_scale: 5.0
+real_video_guidance_scale: 3.0
 real_audio_guidance_scale: 5.0
 denoising_loss_type: velocity
 distillation_loss: dmd
@@ -36,12 +36,12 @@ dcm_total_steps: 48
 scm_data_path: /data/datasets/turbodiff_datasets_and_ckpt/tavgbench/omniforcing_latent_100k
 scm_weight: 1.0
 scm_loss_scale: 100.0
-scm_p_G_mean: 1.5               # rCM 14B: median sigma=exp(1.5)≈4.5, noise-dominant
+scm_p_G_mean: 0.7               # DMD combined: lower noise for joint training
 scm_p_G_std: 1.6
 scm_consistency_boost: 1.0       # rCM-style single norm, no boost needed
-scm_fd_type: 0                   # full JVP; fd_type=1 did not remove the collapse signal
+scm_fd_type: 0                   # full JVP
 scm_fd_size: 0.0001
-scm_tangent_warmup: 0            # match 0517_112904 fast-trend run
+scm_tangent_warmup: 200          # DMD combined: warmup tangent to avoid early instability
 scm_strict_rcm: true
 scm_diagnostic_mode: false
 scm_tangent_clip_mean: 20.0        # p99 clip: exact 112904 setting
@@ -54,19 +54,19 @@ video_loss_weight: 1.0
 audio_loss_weight: 1              # full AV, as in 0517_112904
 
 # ===== Optimizer =====
-lr: 1.0e-05
-generator_lr: 1.0e-05
+lr: 4.0e-05
+generator_lr: 4.0e-05
 generator_adaln_lr: 3.0e-06
 generator_output_scale_shift_lr: 1.0e-06
-critic_lr: 2.0e-06
+critic_lr: 8.0e-06
 beta1: 0.0
 beta2: 0.999
 weight_decay: 0.01
-dfake_gen_update_ratio: 3
+dfake_gen_update_ratio: 5
 max_grad_norm: 99999.0
 scheduler_type: cosine_warmup
 warmup_steps: 0
-max_steps: 3000
+max_steps: 6000
 min_lr: 1.0e-05
 
 ema_enabled: false
@@ -95,7 +95,7 @@ text_encoder_fsdp_wrap_strategy: size
 output_path: /data/datasets/turbodiff_datasets_and_ckpt/my_omniforcing
 log_iters: 1
 train_log_all_scalars: true
-checkpoint_iters: 100
+checkpoint_iters: 500
 skip_initial_checkpoint: true
 
 benchmark_enabled: true
@@ -114,7 +114,7 @@ benchmark_num_prompts: 8
 
 wandb_project: OmniForcing
 wandb_entity: liuyuxiang1021-tianjin-university
-wandb_name: scm_from_dcm_warmup
+wandb_name: scm_dmd_from_3000
 wandb_api_key: "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"
 
 seed: 42
