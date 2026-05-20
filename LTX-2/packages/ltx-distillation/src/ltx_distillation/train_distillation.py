@@ -7,6 +7,7 @@ Usage:
 """
 
 import argparse
+import gc
 import math
 import os
 import threading
@@ -98,6 +99,46 @@ def compute_latent_shapes(
     audio_shape = [batch_size, audio_frames, latent_channels]
 
     return video_shape, audio_shape
+
+
+def _torch_load_cpu_mmap(path: str):
+    load_kwargs = {"map_location": "cpu", "mmap": True}
+    try:
+        return torch.load(path, **load_kwargs)
+    except (TypeError, RuntimeError) as exc:
+        if isinstance(exc, RuntimeError) and "mmap" not in str(exc).lower():
+            raise
+        load_kwargs.pop("mmap", None)
+        return torch.load(path, **load_kwargs)
+
+
+def _rank_ordered_checkpoint_load(path: str, rank: int, world_size: int):
+    """Load a large torch checkpoint one rank at a time to avoid RAM spikes."""
+    if not (dist.is_available() and dist.is_initialized()) or world_size <= 1:
+        return _torch_load_cpu_mmap(path)
+
+    ckpt = None
+    for load_rank in range(world_size):
+        if rank == load_rank:
+            print(f"[Resume] Rank {rank}/{world_size} loading checkpoint shard-serial", flush=True)
+            ckpt = _torch_load_cpu_mmap(path)
+            print(f"[Resume] Rank {rank}/{world_size} finished checkpoint load", flush=True)
+        barrier()
+    return ckpt
+
+
+def _checkpoint_load(path: str, rank: int, world_size: int, mode: str):
+    mode = (mode or "serial").lower()
+    if mode in {"parallel", "all"}:
+        if rank == 0:
+            print("[Resume] Loading checkpoint on all ranks in parallel", flush=True)
+        return _torch_load_cpu_mmap(path)
+    if mode not in {"serial", "rank_serial", "ordered"}:
+        raise ValueError(
+            f"Unsupported checkpoint_load_mode={mode!r}. "
+            "Use 'serial' to reduce RAM spikes or 'parallel' for faster startup."
+        )
+    return _rank_ordered_checkpoint_load(path, rank, world_size)
 
 
 class Trainer:
@@ -230,53 +271,74 @@ class Trainer:
         if resume_ckpt:
             if self.is_main_process:
                 print(f"[Resume] Loading causal DMD checkpoint from {resume_ckpt}")
-            ckpt = torch.load(resume_ckpt, map_location="cpu")
-            self.dmd.generator.load_state_dict(ckpt["generator"])
-            if self.dmd.fake_score is not None and ckpt.get("critic") is not None:
-                self.dmd.fake_score.load_state_dict(ckpt["critic"])
-            if self.dmd.ema_enabled and "generator_ema" in ckpt and ckpt["generator_ema"] is not None:
-                self.dmd._ema_state_dict = {k: v.cpu() for k, v in ckpt["generator_ema"].items()}
+            checkpoint_load_mode = getattr(config, "checkpoint_load_mode", "serial")
+            ckpt = _checkpoint_load(
+                resume_ckpt,
+                self.global_rank,
+                self.world_size,
+                checkpoint_load_mode,
+            )
+            try:
+                self.dmd.generator.load_state_dict(ckpt["generator"])
+                if self.dmd.fake_score is not None and ckpt.get("critic") is not None:
+                    self.dmd.fake_score.load_state_dict(ckpt["critic"])
+                if self.dmd.ema_enabled and "generator_ema" in ckpt and ckpt["generator_ema"] is not None:
+                    self.dmd._ema_state_dict = {k: v.cpu() for k, v in ckpt["generator_ema"].items()}
 
-            # Load optimizer states for seamless resume
-            if "generator_optimizer" in ckpt and ckpt["generator_optimizer"] is not None:
-                try:
-                    osd = ckpt["generator_optimizer"]
-                    flattened_osd = self.generator_optimizer.state_dict()
-                    for key in flattened_osd["state"].keys():
-                        if key in osd["state"]:
-                            flattened_osd["state"][key] = osd["state"][key]
-                    self.generator_optimizer.load_state_dict(flattened_osd)
-                    if self.is_main_process:
-                        print("[Resume] Generator optimizer state loaded")
-                except Exception as e:
-                    print(f"[Resume] Failed to load generator optimizer state: {e}")
-            if self.critic_optimizer is not None and "critic_optimizer" in ckpt and ckpt["critic_optimizer"] is not None:
-                try:
-                    osd = ckpt["critic_optimizer"]
-                    flattened_osd = self.critic_optimizer.state_dict()
-                    for key in flattened_osd["state"].keys():
-                        if key in osd["state"]:
-                            flattened_osd["state"][key] = osd["state"][key]
-                    self.critic_optimizer.load_state_dict(flattened_osd)
-                    if self.is_main_process:
-                        print("[Resume] Critic optimizer state loaded")
-                except Exception as e:
-                    print(f"[Resume] Failed to load critic optimizer state: {e}")
-            if "generator_scheduler" in ckpt and ckpt["generator_scheduler"] is not None and self.generator_scheduler is not None:
-                self.generator_scheduler.load_state_dict(ckpt["generator_scheduler"])
-            if "critic_scheduler" in ckpt and ckpt["critic_scheduler"] is not None and self.critic_scheduler is not None:
-                self.critic_scheduler.load_state_dict(ckpt["critic_scheduler"])
+                resume_training_state = bool(getattr(config, "resume_training_state", True))
+                if resume_training_state:
+                    # Load optimizer states for seamless resume
+                    if "generator_optimizer" in ckpt and ckpt["generator_optimizer"] is not None:
+                        try:
+                            osd = ckpt["generator_optimizer"]
+                            flattened_osd = self.generator_optimizer.state_dict()
+                            for key in flattened_osd["state"].keys():
+                                if key in osd["state"]:
+                                    flattened_osd["state"][key] = osd["state"][key]
+                            self.generator_optimizer.load_state_dict(flattened_osd)
+                            if self.is_main_process:
+                                print("[Resume] Generator optimizer state loaded")
+                        except Exception as e:
+                            print(f"[Resume] Failed to load generator optimizer state: {e}")
+                    if self.critic_optimizer is not None and "critic_optimizer" in ckpt and ckpt["critic_optimizer"] is not None:
+                        try:
+                            osd = ckpt["critic_optimizer"]
+                            flattened_osd = self.critic_optimizer.state_dict()
+                            for key in flattened_osd["state"].keys():
+                                if key in osd["state"]:
+                                    flattened_osd["state"][key] = osd["state"][key]
+                            self.critic_optimizer.load_state_dict(flattened_osd)
+                            if self.is_main_process:
+                                print("[Resume] Critic optimizer state loaded")
+                        except Exception as e:
+                            print(f"[Resume] Failed to load critic optimizer state: {e}")
+                    if "generator_scheduler" in ckpt and ckpt["generator_scheduler"] is not None and self.generator_scheduler is not None:
+                        self.generator_scheduler.load_state_dict(ckpt["generator_scheduler"])
+                    if "critic_scheduler" in ckpt and ckpt["critic_scheduler"] is not None and self.critic_scheduler is not None:
+                        self.critic_scheduler.load_state_dict(ckpt["critic_scheduler"])
 
-            completed_step = int(ckpt.get("completed_step", ckpt.get("step", -1)))
-            self.step = int(ckpt.get("next_step", completed_step + 1))
-            if self.is_main_process:
-                if completed_step >= 0:
-                    print(
-                        f"[Resume] Loaded checkpoint after completed step {completed_step}; "
-                        f"resuming from step {self.step}"
-                    )
+                    completed_step = int(ckpt.get("completed_step", ckpt.get("step", -1)))
+                    self.step = int(ckpt.get("next_step", completed_step + 1))
+                    if self.is_main_process:
+                        if completed_step >= 0:
+                            print(
+                                f"[Resume] Loaded checkpoint after completed step {completed_step}; "
+                                f"resuming from step {self.step}"
+                            )
+                        else:
+                            print(f"[Resume] Resumed at step {self.step}")
                 else:
-                    print(f"[Resume] Resumed at step {self.step}")
+                    completed_step = int(ckpt.get("completed_step", ckpt.get("step", -1)))
+                    if self.is_main_process:
+                        print(
+                            f"[Resume] Initialized model weights from checkpoint"
+                            f" (completed_step={completed_step}); training state reset"
+                        )
+            finally:
+                del ckpt
+                gc.collect()
+                torch.cuda.empty_cache()
+                barrier()
 
     def _disable_wandb(self, reason: str, finish: bool = False):
         if not self.is_main_process or not self.wandb_enabled:
