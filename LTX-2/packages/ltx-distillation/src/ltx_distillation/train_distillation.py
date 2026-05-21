@@ -580,6 +580,9 @@ class Trainer:
         self.backward_simulation = getattr(config, "backward_simulation", True)
         self.scm_enabled = bool(getattr(config, "scm_enabled", False))
         self.dcm_enabled = bool(getattr(config, "dcm_enabled", False))
+        self.scm_diagnostic_mode = bool(getattr(config, "scm_diagnostic_mode", False))
+        self.scm_diagnostic_num_repeats = int(getattr(config, "scm_diagnostic_num_repeats", 20))
+        self.scm_diagnostic_samples = []
 
         if self.backward_simulation:
             dataset = TextDataset(config.data_path)
@@ -630,9 +633,6 @@ class Trainer:
             self.scm_dataloader = cycle(scm_dataloader)
 
             # Diagnostic mode: pre-fetch fixed samples for variance analysis
-            self.scm_diagnostic_mode = bool(getattr(config, "scm_diagnostic_mode", False))
-            self.scm_diagnostic_num_repeats = int(getattr(config, "scm_diagnostic_num_repeats", 20))
-            self.scm_diagnostic_samples = []
             if self.scm_diagnostic_mode:
                 num_samples = int(getattr(config, "scm_diagnostic_num_samples", 4))
                 raw_dataset = scm_dataset  # un-shuffled, direct index access
