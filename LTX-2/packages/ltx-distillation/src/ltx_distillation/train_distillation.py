@@ -965,6 +965,12 @@ class Trainer:
         TRAIN_GENERATOR = (
             True if not self.dmd.critic_enabled else self.step % config.dfake_gen_update_ratio == 0
         )
+        separate_generator_critic_phases = bool(
+            getattr(config, "separate_generator_critic_phases", False)
+        )
+        TRAIN_CRITIC = self.dmd.critic_enabled and (
+            not separate_generator_critic_phases or not TRAIN_GENERATOR
+        )
         LOG_LAYERWISE_GRAD = self.step % self.layerwise_grad_log_interval == 0
 
         # Periodic cache clearing
@@ -1084,7 +1090,7 @@ class Trainer:
             generator_layerwise_grad_dict = {}
 
         # Train critic
-        if self.dmd.critic_enabled:
+        if TRAIN_CRITIC:
             critic_loss, critic_log_dict = self.dmd.critic_loss(
                 video_shape=video_shape,
                 audio_shape=audio_shape,
@@ -1144,6 +1150,8 @@ class Trainer:
             wandb_dict = {
                 "train/critic_loss": self._to_scalar(critic_loss) if critic_loss is not None else 0.0,
                 "train/critic_grad_norm": self._to_scalar(critic_grad_norm) if critic_grad_norm is not None else 0.0,
+                "train/phase_generator": float(TRAIN_GENERATOR),
+                "train/phase_critic": float(TRAIN_CRITIC),
             }
 
             # Add per-component critic losses from log_dict
@@ -1185,6 +1193,7 @@ class Trainer:
             if self.log_iters > 0 and self.step % self.log_iters == 0:
                 summary_parts = [
                     f"step={self.step}",
+                    f"phase={'gen' if TRAIN_GENERATOR else 'critic'}",
                 ]
                 if self.scm_diagnostic_mode and self.scm_diagnostic_samples:
                     diag_s = self.step % (len(self.scm_diagnostic_samples) * self.scm_diagnostic_num_repeats)
