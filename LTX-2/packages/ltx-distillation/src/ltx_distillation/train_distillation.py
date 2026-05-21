@@ -979,13 +979,28 @@ class Trainer:
 
         # Get batch
         need_dmd_inputs = self.dmd.dmd_enabled or self.dmd.critic_enabled
+        share_scm_dmd_batch = bool(getattr(config, "share_scm_dmd_batch", False))
+        use_shared_scm_batch = (
+            share_scm_dmd_batch
+            and self.backward_simulation
+            and need_dmd_inputs
+            and (self.scm_enabled or self.dcm_enabled)
+        )
         text_prompts = None
         clean_video = None
         clean_audio = None
         conditional_dict = None
         unconditional_dict = None
+        scm_text_prompts = None
+        scm_clean_video = None
+        scm_clean_audio = None
+        scm_conditional_dict = None
+        scm_unconditional_dict = None
 
-        if need_dmd_inputs:
+        if use_shared_scm_batch:
+            scm_text_prompts, scm_clean_video, scm_clean_audio = self._prepare_scm_batch()
+            text_prompts = scm_text_prompts
+        elif need_dmd_inputs:
             if not self.backward_simulation:
                 batch = next(self.dataloader)
                 text_prompts = batch["prompts"]
@@ -1005,11 +1020,6 @@ class Trainer:
             else:
                 text_prompts = next(self.dataloader)
 
-        scm_clean_video = None
-        scm_clean_audio = None
-        scm_conditional_dict = None
-        scm_unconditional_dict = None
-
         batch_size = len(text_prompts) if text_prompts is not None else None
         with torch.no_grad():
             if need_dmd_inputs:
@@ -1017,9 +1027,14 @@ class Trainer:
                 unconditional_dict = self._get_unconditional_dict(batch_size)
 
             if self.scm_enabled or self.dcm_enabled:
-                scm_text_prompts, scm_clean_video, scm_clean_audio = self._prepare_scm_batch()
-                scm_conditional_dict = self.dmd.text_encoder(text_prompts=scm_text_prompts)
-                scm_unconditional_dict = self._get_unconditional_dict(len(scm_text_prompts))
+                if not use_shared_scm_batch:
+                    scm_text_prompts, scm_clean_video, scm_clean_audio = self._prepare_scm_batch()
+                if use_shared_scm_batch:
+                    scm_conditional_dict = conditional_dict
+                    scm_unconditional_dict = unconditional_dict
+                else:
+                    scm_conditional_dict = self.dmd.text_encoder(text_prompts=scm_text_prompts)
+                    scm_unconditional_dict = self._get_unconditional_dict(len(scm_text_prompts))
                 if batch_size is None:
                     batch_size = len(scm_text_prompts)
 
@@ -1152,6 +1167,7 @@ class Trainer:
                 "train/critic_grad_norm": self._to_scalar(critic_grad_norm) if critic_grad_norm is not None else 0.0,
                 "train/phase_generator": float(TRAIN_GENERATOR),
                 "train/phase_critic": float(TRAIN_CRITIC),
+                "train/shared_scm_dmd_batch": float(use_shared_scm_batch),
             }
 
             # Add per-component critic losses from log_dict
@@ -1195,6 +1211,8 @@ class Trainer:
                     f"step={self.step}",
                     f"phase={'gen' if TRAIN_GENERATOR else 'critic'}",
                 ]
+                if use_shared_scm_batch:
+                    summary_parts.append("shared_batch=1")
                 if self.scm_diagnostic_mode and self.scm_diagnostic_samples:
                     diag_s = self.step % (len(self.scm_diagnostic_samples) * self.scm_diagnostic_num_repeats)
                     summary_parts.append(
