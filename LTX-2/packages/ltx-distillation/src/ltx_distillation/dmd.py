@@ -185,6 +185,7 @@ class LTX2DMD(nn.Module):
         self.dmd_style = str(getattr(args, "dmd_style", "legacy")).lower()
         self.use_rcm_style_dmd = self.dmd_style in {"rcm", "rcm_trig", "trig"}
         self.dmd_p_D_shift = float(getattr(args, "dmd_p_D_shift", 5.0))
+        self.dmd_weight = float(getattr(args, "dmd_weight", 1.0))
         self.backward_trig_timesteps = [
             float(t) for t in getattr(args, "backward_trig_timesteps", [1.5, 1.4, 1.0])
         ]
@@ -3196,10 +3197,15 @@ class LTX2DMD(nn.Module):
             )
             log_dict.update(rollout_log)
             log_dict.update(dmd_log_dict)
-            total_loss = dmd_loss
+            scaled_dmd_loss = self.dmd_weight * dmd_loss
+            total_loss = scaled_dmd_loss
             log_dict["generator_dmd_loss"] = dmd_loss.detach()
+            log_dict["generator_dmd_weighted_loss"] = scaled_dmd_loss.detach()
+            log_dict["dmd_weight"] = self.dmd_weight
         else:
             log_dict["generator_dmd_loss"] = torch.tensor(0.0, device=self.device)
+            log_dict["generator_dmd_weighted_loss"] = torch.tensor(0.0, device=self.device)
+            log_dict["dmd_weight"] = self.dmd_weight
 
         if self.scm_enabled:
             if scm_clean_video is None or scm_conditional_dict is None or scm_unconditional_dict is None:
