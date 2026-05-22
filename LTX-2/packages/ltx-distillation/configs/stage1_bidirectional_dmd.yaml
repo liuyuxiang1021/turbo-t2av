@@ -29,7 +29,12 @@ fake_score_grad:
 # =============================================================================
 dmd_enabled: true
 critic_enabled: true
-dmd_style: legacy
+dmd_style: rcm_trig
+dmd_p_D_shift: 5.0
+backward_trig_timesteps:
+  - 1.5
+  - 1.4
+  - 1.0
 
 denoising_step_list:
   - 1000
@@ -138,5 +143,3 @@ teacher_benchmark_enabled: true
 teacher_benchmark_num_inference_steps: 40
 teacher_benchmark_video_guidance_scale: 3.0
 teacher_benchmark_audio_guidance_scale: 5.0
-teacher_benchmark_mode: native_rf
-teacher_benchmark_include_native_rf_reference: false

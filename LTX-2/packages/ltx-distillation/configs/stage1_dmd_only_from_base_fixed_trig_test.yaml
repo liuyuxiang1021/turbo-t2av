@@ -1,4 +1,4 @@
-# DMD-only test from the base LTX-2 checkpoint using the fixed TrigFlow wrapper.
+# DMD-only test from the base LTX-2 checkpoint, aligned with the 0412 rcm_trig run.
 # No resume_checkpoint: generator/critic start from checkpoint_path.
 
 checkpoint_path: /data/datasets/turbodiff_datasets_and_ckpt/omniforcing/ltx-2-19b-dev.safetensors
@@ -87,7 +87,7 @@ teacher_benchmark_enabled: false
 
 wandb_project: OmniForcing
 wandb_entity: liuyuxiang1021-tianjin-university
-wandb_name: dmd_only_from_base_fixed_trig_test
+wandb_name: dmd_only_from_base_0412aligned_test
 wandb_api_key: "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"
 
 seed: 42
