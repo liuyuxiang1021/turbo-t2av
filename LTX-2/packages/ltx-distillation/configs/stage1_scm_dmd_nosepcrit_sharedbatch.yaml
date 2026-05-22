@@ -96,10 +96,10 @@ num_frames: 121
 video_height: 512
 video_width: 768
 
-# ===== FSDP (match DMD-only) =====
-sharding_strategy: hybrid_full
+# ===== FSDP =====
+sharding_strategy: full_shard
 fsdp_use_orig_params: true
-generator_fsdp_wrap_strategy: size
+generator_fsdp_wrap_strategy: transformer
 real_score_cpu_offload: false
 text_encoder_cpu_offload: false
 real_score_fsdp_wrap_strategy: size
