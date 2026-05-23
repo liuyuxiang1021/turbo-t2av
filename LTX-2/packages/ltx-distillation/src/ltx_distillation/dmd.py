@@ -184,6 +184,11 @@ class LTX2DMD(nn.Module):
         self.real_audio_guidance_scale = getattr(args, "real_audio_guidance_scale", 7.0)
         self.dmd_style = str(getattr(args, "dmd_style", "legacy")).lower()
         self.use_rcm_style_dmd = self.dmd_style in {"rcm", "rcm_trig", "trig"}
+        self.dmd_loss_reduction = str(getattr(args, "dmd_loss_reduction", "sum")).lower()
+        if self.dmd_loss_reduction not in {"mean", "sum"}:
+            raise ValueError(
+                f"dmd_loss_reduction must be 'mean' or 'sum', got {self.dmd_loss_reduction!r}"
+            )
         self.dmd_p_D_shift = float(getattr(args, "dmd_p_D_shift", 5.0))
         self.dmd_weight = float(getattr(args, "dmd_weight", 1.0))
         self.backward_trig_timesteps = [
@@ -2150,6 +2155,18 @@ class LTX2DMD(nn.Module):
         denom = (weights * mask_f).sum().clamp_min(1.0)
         return weighted.sum() / denom
 
+    @staticmethod
+    def _masked_weighted_sum(
+        values: torch.Tensor,
+        weights: torch.Tensor,
+        mask: Optional[torch.Tensor],
+    ) -> torch.Tensor:
+        if mask is None:
+            return (values * weights).sum(dim=1).mean()
+        mask_f = mask.to(values.dtype)
+        weighted = values * weights * mask_f
+        return weighted.sum() / values.shape[0]
+
     def _compute_masked_denoising_loss(
         self,
         *,
@@ -2295,22 +2312,39 @@ class LTX2DMD(nn.Module):
         video_block_w = self._compute_block_weights(F_v)  # [F_v]
         audio_block_w = self._compute_block_weights(F_a, is_audio=True)  # [F_a]
 
-        # Per-frame MSE then weight
+        # Per-frame DMD loss then weight. The default "sum" reduction follows
+        # rCM's loss scale; "mean" keeps the legacy OmniForcing scale.
         video_diff = video_latent.double() - (video_latent.double() - grad_video.double()).detach()
-        video_per_frame = (video_diff ** 2).mean(dim=[2, 3, 4])  # [B, F_v]
-        video_loss = 0.5 * self._masked_weighted_mean(
-            video_per_frame,
-            video_block_w.unsqueeze(0),
-            video_loss_mask,
-        )
+        if self.dmd_loss_reduction == "sum":
+            video_per_frame = (video_diff ** 2).sum(dim=[2, 3, 4])  # [B, F_v]
+            video_loss = self._masked_weighted_sum(
+                video_per_frame,
+                video_block_w.unsqueeze(0),
+                video_loss_mask,
+            )
+        else:
+            video_per_frame = (video_diff ** 2).mean(dim=[2, 3, 4])  # [B, F_v]
+            video_loss = 0.5 * self._masked_weighted_mean(
+                video_per_frame,
+                video_block_w.unsqueeze(0),
+                video_loss_mask,
+            )
 
         audio_diff = audio_latent.double() - (audio_latent.double() - grad_audio.double()).detach()
-        audio_per_frame = (audio_diff ** 2).mean(dim=2)  # [B, F_a]
-        audio_loss = 0.5 * self._masked_weighted_mean(
-            audio_per_frame,
-            audio_block_w.unsqueeze(0),
-            audio_loss_mask,
-        )
+        if self.dmd_loss_reduction == "sum":
+            audio_per_frame = (audio_diff ** 2).sum(dim=2)  # [B, F_a]
+            audio_loss = self._masked_weighted_sum(
+                audio_per_frame,
+                audio_block_w.unsqueeze(0),
+                audio_loss_mask,
+            )
+        else:
+            audio_per_frame = (audio_diff ** 2).mean(dim=2)  # [B, F_a]
+            audio_loss = 0.5 * self._masked_weighted_mean(
+                audio_per_frame,
+                audio_block_w.unsqueeze(0),
+                audio_loss_mask,
+            )
 
         video_w, audio_w = self.get_loss_weights()
         total_loss = video_w * video_loss + audio_w * audio_loss
@@ -2319,6 +2353,7 @@ class LTX2DMD(nn.Module):
         log_dict["audio_dmd_loss"] = audio_loss.detach()
         log_dict["video_loss_weight"] = video_w
         log_dict["audio_loss_weight"] = audio_w
+        log_dict["dmd_loss_reduction_sum"] = float(self.dmd_loss_reduction == "sum")
         log_dict["alignment/video_sigma_mean"] = video_sigma.float().mean().item()
         log_dict["alignment/audio_sigma_mean"] = audio_sigma.float().mean().item()
         if self.use_rcm_style_dmd:

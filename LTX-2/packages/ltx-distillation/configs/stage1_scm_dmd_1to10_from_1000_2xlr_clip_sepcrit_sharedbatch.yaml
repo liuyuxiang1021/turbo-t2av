@@ -14,6 +14,7 @@ dmd_enabled: true
 critic_enabled: true
 dmd_weight: 10.0
 dmd_style: rcm_trig
+dmd_loss_reduction: sum
 dmd_p_D_shift: 5.0
 backward_trig_timesteps:
 - 1.5
