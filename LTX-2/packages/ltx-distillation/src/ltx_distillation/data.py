@@ -3,6 +3,7 @@ Dataset classes for DMD distillation.
 """
 
 import bisect
+import math
 import os
 from pathlib import Path
 from typing import List, Optional
@@ -56,6 +57,35 @@ class TextDataset(Dataset):
 
     def __getitem__(self, idx: int) -> str:
         return self.prompts[idx]
+
+
+class ReverseDistributedSampler(torch.utils.data.distributed.DistributedSampler):
+    """DistributedSampler that reads each epoch's global index order in reverse."""
+
+    def __iter__(self):
+        if self.shuffle:
+            generator = torch.Generator()
+            generator.manual_seed(self.seed + self.epoch)
+            indices = torch.randperm(len(self.dataset), generator=generator).tolist()
+        else:
+            indices = list(range(len(self.dataset)))
+
+        indices = list(reversed(indices))
+
+        if not self.drop_last:
+            padding_size = self.total_size - len(indices)
+            if padding_size <= len(indices):
+                indices += indices[:padding_size]
+            else:
+                indices += (indices * math.ceil(padding_size / len(indices)))[:padding_size]
+        else:
+            indices = indices[:self.total_size]
+        assert len(indices) == self.total_size
+
+        indices = indices[self.rank : self.total_size : self.num_replicas]
+        assert len(indices) == self.num_samples
+
+        return iter(indices)
 
 
 class ODERegressionLMDBDataset(Dataset):

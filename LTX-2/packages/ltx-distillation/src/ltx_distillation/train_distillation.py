@@ -573,7 +573,7 @@ class Trainer:
 
     def _init_dataloader(self):
         """Initialize data loader."""
-        from ltx_distillation.data import collate_text_prompts, collate_ode_data
+        from ltx_distillation.data import ReverseDistributedSampler, collate_text_prompts, collate_ode_data
 
         config = self.config
 
@@ -593,8 +593,13 @@ class Trainer:
                 max_pair=int(1e8),
             )
             collate_fn = collate_ode_data
+        reverse_data_order = bool(getattr(config, "reverse_data_order", False))
+        sampler_cls = ReverseDistributedSampler if reverse_data_order else torch.utils.data.distributed.DistributedSampler
+        if reverse_data_order:
+            if self.is_main_process:
+                print("[Data] reverse_data_order=true: using reversed main sampler order", flush=True)
 
-        sampler = torch.utils.data.distributed.DistributedSampler(
+        sampler = sampler_cls(
             dataset,
             shuffle=True,
             drop_last=True,
@@ -619,7 +624,18 @@ class Trainer:
                 scm_data_path,
                 max_pair=int(getattr(config, "scm_max_pair", 1e8)),
             )
-            scm_sampler = torch.utils.data.distributed.DistributedSampler(
+            reverse_scm_data_order = bool(
+                getattr(config, "reverse_scm_data_order", getattr(config, "reverse_data_order", False))
+            )
+            scm_sampler_cls = (
+                ReverseDistributedSampler
+                if reverse_scm_data_order
+                else torch.utils.data.distributed.DistributedSampler
+            )
+            if reverse_scm_data_order:
+                if self.is_main_process:
+                    print("[Data] reverse_scm_data_order=true: using reversed SCM sampler order", flush=True)
+            scm_sampler = scm_sampler_cls(
                 scm_dataset,
                 shuffle=True,
                 drop_last=True,

@@ -76,6 +76,8 @@ mixed_precision: true
 gradient_checkpointing: true
 batch_size: 1
 data_path: /data/datasets/turbodiff_datasets_and_ckpt/tavgbench/release_prompts.txt
+reverse_data_order: false
+reverse_scm_data_order: true
 backward_simulation: true
 num_frames: 121
 video_height: 512
