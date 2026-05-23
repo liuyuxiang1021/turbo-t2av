@@ -279,25 +279,7 @@ class Trainer:
                 checkpoint_load_mode,
             )
             try:
-                # Detect old-format checkpoints (pre-X0Model wrapper, missing
-                # velocity_model. prefix) and remap keys so they load correctly
-                # into the X0Model-based wrapper.
-                gen_sd = ckpt["generator"]
-                sample_keys = list(gen_sd.keys())[:5]
-                has_vm_prefix = any("velocity_model." in k for k in sample_keys)
-                needs_remap = any(k.startswith("model.") and "velocity_model." not in k for k in sample_keys)
-                if needs_remap and not has_vm_prefix:
-                    remapped = {}
-                    for k, v in gen_sd.items():
-                        if k.startswith("model.") and "velocity_model." not in k:
-                            new_k = "model.velocity_model." + k[len("model."):]
-                            remapped[new_k] = v
-                        else:
-                            remapped[k] = v
-                    gen_sd = remapped
-                    if self.is_main_process:
-                        print("[Resume] Remapped old checkpoint keys to X0Model format")
-                self.dmd.generator.load_state_dict(gen_sd)
+                self.dmd.generator.load_state_dict(ckpt["generator"])
                 if self.dmd.fake_score is not None and ckpt.get("critic") is not None:
                     self.dmd.fake_score.load_state_dict(ckpt["critic"])
                 if self.dmd.ema_enabled and "generator_ema" in ckpt and ckpt["generator_ema"] is not None:
