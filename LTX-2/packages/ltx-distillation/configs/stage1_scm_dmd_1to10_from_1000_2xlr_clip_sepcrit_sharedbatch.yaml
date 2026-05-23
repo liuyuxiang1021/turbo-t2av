@@ -12,7 +12,7 @@ fake_score_grad:
   model: true
 dmd_enabled: true
 critic_enabled: true
-dmd_weight: 10.0
+dmd_weight: 1.0
 dmd_style: rcm_trig
 dmd_loss_reduction: sum
 dmd_p_D_shift: 5.0
@@ -110,7 +110,7 @@ student_benchmark_use_cfg: false
 benchmark_num_prompts: 8
 wandb_project: OmniForcing
 wandb_entity: liuyuxiang1021-tianjin-university
-wandb_name: scm_dmd_1to10_from_1000_reverse_scm_sharedbatch
+wandb_name: scm_dmd_sum_from_1000_reverse_scm_sharedbatch
 wandb_api_key: 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
 seed: 42
 no_visualize: false
