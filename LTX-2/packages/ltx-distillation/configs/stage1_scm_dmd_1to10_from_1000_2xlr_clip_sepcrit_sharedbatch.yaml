@@ -75,6 +75,8 @@ mixed_precision: true
 gradient_checkpointing: true
 batch_size: 1
 data_path: /data/datasets/turbodiff_datasets_and_ckpt/tavgbench/release_prompts.txt
+reverse_data_order: false
+reverse_scm_data_order: true
 backward_simulation: true
 num_frames: 121
 video_height: 512
@@ -107,7 +109,7 @@ student_benchmark_use_cfg: false
 benchmark_num_prompts: 8
 wandb_project: OmniForcing
 wandb_entity: liuyuxiang1021-tianjin-university
-wandb_name: scm_dmd_1to10_from_1000_olddmdlr_clip3_sepcrit_sharedbatch
+wandb_name: scm_dmd_1to10_from_1000_reverse_scm_sharedbatch
 wandb_api_key: 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
 seed: 42
 no_visualize: false
