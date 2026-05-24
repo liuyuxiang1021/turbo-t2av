@@ -1,18 +1,18 @@
 <div align="center">
 
-# turbo-t2av
+# TurboT2AV
 
 <a href="https://github.com/liuyuxiang1021/TurboT2AV"><img src="https://img.shields.io/badge/GitHub-TurboT2AV-blue.svg" alt="GitHub"></a>
 
 </div>
 
-**turbo-t2av** is a text-to-audio-video distillation project built around LTX-2 components. The current script surface is intentionally limited to bidirectional distillation: DCM warmup, SCM, DMD, and rCM-style joint SCM+DMD.
+**TurboT2AV** is a text-to-audio-video distillation project built around LTX-2 components. The current script surface is intentionally limited to bidirectional distillation: DCM warmup, SCM, DMD, and rCM-style joint SCM+DMD.
 
 ## Setup
 
 ```bash
 git clone https://github.com/liuyuxiang1021/TurboT2AV.git
-cd turbo-t2av/LTX-2
+cd TurboT2AV/LTX-2
 
 # Recommended when uv/pixi is available.
 uv sync
@@ -60,6 +60,39 @@ output_path: /path/to/outputs
 
 Run commands from `LTX-2/packages/ltx-distillation`.
 
+The default recipe is:
+
+```text
+DCM 500-step warmup -> SCM-only training to step 1000 -> full rCM training
+```
+
+In practice, starting SCM directly from the base model can be unstable during the early steps. The project default therefore first runs DCM for 500 steps as a discrete consistency warmup, then switches to SCM-only training until `checkpoint_001000`, and then initializes the full rCM run from that SCM checkpoint.
+
+Launch the default recipe:
+
+```bash
+cd LTX-2/packages/ltx-distillation
+
+NUM_GPUS=8 MASTER_PORT=29500 ./scripts/train_default_distillation.sh
+```
+
+The default recipe writes deterministic phase run directories under `output_path`:
+
+```text
+<prefix>_dcm500_warmup/checkpoints/checkpoint_000500/model.pth
+<prefix>_scm1000_from_dcm500/checkpoints/checkpoint_001000/model.pth
+<prefix>_rcm_from_scm1000/
+```
+
+Useful overrides:
+
+```bash
+OUTPUT_PATH=/path/to/outputs \
+PIPELINE_RUN_PREFIX=0524_TurboT2AV \
+NUM_GPUS=8 MASTER_PORT=29500 \
+./scripts/train_default_distillation.sh
+```
+
 The unified launcher is `./scripts/train_bidirectional.sh`. The short wrapper scripts call the same launcher:
 
 | Mode | Wrapper |
@@ -71,11 +104,9 @@ The unified launcher is `./scripts/train_bidirectional.sh`. The short wrapper sc
 
 `./scripts/train_scm_dmd.sh` is kept as a compatibility alias for `./scripts/train_rcm.sh`.
 
-Basic launch:
+Standalone launch:
 
 ```bash
-cd LTX-2/packages/ltx-distillation
-
 NUM_GPUS=8 MASTER_PORT=29500 ./scripts/train_dcm.sh
 NUM_GPUS=8 MASTER_PORT=29501 ./scripts/train_scm.sh
 NUM_GPUS=8 MASTER_PORT=29502 ./scripts/train_dmd.sh
@@ -89,9 +120,9 @@ NUM_GPUS=8 MASTER_PORT=29510 \
 ./scripts/train_bidirectional.sh scm /path/to/config.yaml
 ```
 
-## DCM As Warmup
+## Warmup And Resume
 
-SCM, DMD, and rCM can all start from a DCM checkpoint. Treat DCM as the warmup stage and pass the DCM checkpoint through `DCM_CHECKPOINT`.
+SCM, DMD, and rCM can all start from an earlier checkpoint. Pass it through `INIT_CHECKPOINT`, `WARMUP_CHECKPOINT`, or `DCM_CHECKPOINT`.
 
 The launcher injects these config values into a temporary YAML:
 
@@ -105,15 +136,15 @@ skip_initial_checkpoint: true
 Examples:
 
 ```bash
-DCM_CHECKPOINT=/path/to/dcm_run/checkpoints/checkpoint_001000/model.pth \
+DCM_CHECKPOINT=/path/to/dcm500_warmup/checkpoints/checkpoint_000500/model.pth \
 NUM_GPUS=8 MASTER_PORT=29601 \
 ./scripts/train_scm.sh
 
-DCM_CHECKPOINT=/path/to/dcm_run/checkpoints/checkpoint_001000/model.pth \
+DCM_CHECKPOINT=/path/to/dcm500_warmup/checkpoints/checkpoint_000500/model.pth \
 NUM_GPUS=8 MASTER_PORT=29602 \
 ./scripts/train_dmd.sh
 
-DCM_CHECKPOINT=/path/to/dcm_run/checkpoints/checkpoint_001000/model.pth \
+WARMUP_CHECKPOINT=/path/to/scm1000_from_dcm500/checkpoints/checkpoint_001000/model.pth \
 NUM_GPUS=8 MASTER_PORT=29603 \
 ./scripts/train_rcm.sh
 ```
@@ -137,6 +168,7 @@ Only distillation scripts are kept in `LTX-2/packages/ltx-distillation/scripts/`
 
 ```text
 train_bidirectional.sh
+train_default_distillation.sh
 train_dcm.sh
 train_scm.sh
 train_dmd.sh
@@ -147,7 +179,7 @@ train_scm_dmd.sh
 ## Repository Structure
 
 ```text
-turbo-t2av/
+TurboT2AV/
 ├── README.md
 ├── static/
 └── LTX-2/
@@ -164,4 +196,4 @@ turbo-t2av/
 
 ## Acknowledgements
 
-turbo-t2av builds on LTX-2, Self-Forcing, CausVid, and DMD-style distillation work.
+TurboT2AV builds on LTX-2, Self-Forcing, CausVid, rCM, and DMD-style distillation work.

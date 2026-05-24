@@ -11,6 +11,7 @@ Usage:
 import argparse
 import sys
 import os
+from pathlib import Path
 import numpy as np
 import torch
 import torch.distributed as dist
@@ -24,7 +25,7 @@ if _src not in sys.path:
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config_path", type=str,
-                        default="/home/jovyan/codes/turbodiff/new_Turbo/turbo-t2av/LTX-2/packages/ltx-distillation/configs/stage1_bidirectional_scm_rcm.yaml")
+                        default=str(Path(__file__).resolve().parents[1] / "configs" / "bidirectional_scm.yaml"))
     parser.add_argument("--num_samples", type=int, default=4,
                         help="Number of fixed data samples to test")
     parser.add_argument("--num_repeats", type=int, default=20,

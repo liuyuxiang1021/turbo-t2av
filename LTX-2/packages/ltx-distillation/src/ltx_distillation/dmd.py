@@ -2313,7 +2313,7 @@ class LTX2DMD(nn.Module):
         audio_block_w = self._compute_block_weights(F_a, is_audio=True)  # [F_a]
 
         # Per-frame DMD loss then weight. The default "sum" reduction follows
-        # rCM's loss scale; "mean" keeps the legacy turbo-t2av scale.
+        # rCM's loss scale; "mean" keeps the legacy TurboT2AV scale.
         video_diff = video_latent.double() - (video_latent.double() - grad_video.double()).detach()
         if self.dmd_loss_reduction == "sum":
             video_per_frame = (video_diff ** 2).sum(dim=[2, 3, 4])  # [B, F_v]

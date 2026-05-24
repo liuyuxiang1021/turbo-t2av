@@ -157,7 +157,7 @@ text_encoder_fsdp_wrap_strategy: size
 output_path: ./outputs/stage3_self_forcing_dmd
 log_iters: 200
 
-wandb_project: turbo-t2av
+wandb_project: TurboT2AV
 wandb_entity: your-wandb-entity
 wandb_name: stage3_self_forcing_dmd
 

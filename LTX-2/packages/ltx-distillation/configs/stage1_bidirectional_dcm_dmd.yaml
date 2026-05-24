@@ -2,11 +2,11 @@
 # Stage 1: Bidirectional DCM + DMD
 # =============================================================================
 # DMD hyperparameters are aligned with:
-# /data/datasets/turbodiff_datasets_and_ckpt/my_turbo-t2av/0419_173122_stage1_bidirectional_dmd
+# /data/datasets/turbodiff_datasets_and_ckpt/my_TurboT2AV/0419_173122_stage1_bidirectional_dmd
 # DCM hyperparameters are aligned with the current bidirectional DCM recipe.
 
-checkpoint_path: /data/datasets/turbodiff_datasets_and_ckpt/turbo-t2av/ltx-2-19b-dev.safetensors
-gemma_path: /data/datasets/turbodiff_datasets_and_ckpt/turbo-t2av/gemma-3-12b-it-qat-q4_0-unquantized
+checkpoint_path: /data/datasets/turbodiff_datasets_and_ckpt/TurboT2AV/ltx-2-19b-dev.safetensors
+gemma_path: /data/datasets/turbodiff_datasets_and_ckpt/TurboT2AV/gemma-3-12b-it-qat-q4_0-unquantized
 
 model_name: ltx2_av
 
@@ -52,7 +52,7 @@ denoising_loss_type: velocity
 distillation_loss: dmd
 
 scm_enabled: false
-scm_data_path: /data/datasets/turbodiff_datasets_and_ckpt/tavgbench/turbo-t2av_latent_100k
+scm_data_path: /data/datasets/turbodiff_datasets_and_ckpt/tavgbench/TurboT2AV_latent_100k
 scm_batch_size: 1
 scm_max_pair: 100000000
 scm_weight: 1.0
@@ -96,11 +96,11 @@ real_score_fsdp_wrap_strategy: size
 fake_score_fsdp_wrap_strategy: size
 text_encoder_fsdp_wrap_strategy: size
 
-output_path: /data/datasets/turbodiff_datasets_and_ckpt/my_turbo-t2av
+output_path: /data/datasets/turbodiff_datasets_and_ckpt/my_TurboT2AV
 log_iters: 200
 checkpoint_iters: 500
 
-wandb_project: turbo-t2av
+wandb_project: TurboT2AV
 wandb_entity: liuyuxiang1021-tianjin-university
 wandb_name: stage1_bidirectional_dcm_dmd
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Unified launcher for bidirectional turbo-t2av distillation modes.
+# Unified launcher for bidirectional TurboT2AV distillation modes.
 
 set -euo pipefail
 
@@ -16,8 +16,13 @@ Modes:
   scm_dmd   alias for rcm
 
 Warmup:
-  Set DCM_CHECKPOINT=/path/to/dcm/checkpoint/model.pth to initialize scm, dmd,
-  or rcm from a DCM checkpoint without loading optimizer/scheduler state.
+  Set INIT_CHECKPOINT, WARMUP_CHECKPOINT, or DCM_CHECKPOINT to initialize scm,
+  dmd, or rcm from an earlier checkpoint without loading optimizer/scheduler
+  state.
+
+Overrides:
+  MAX_STEPS, CHECKPOINT_ITERS, WANDB_NAME, OUTPUT_PATH, RUN_DIR_NAME,
+  CHECKPOINT_LOAD_MODE.
 
 Distributed environment:
   NPROC_PER_NODE or NUM_GPUS, NNODES, NODE_RANK, MASTER_ADDR, MASTER_PORT.
@@ -91,7 +96,7 @@ fi
 
 export PYTHONPATH="${DISTILLATION_ROOT}/src:${LTX2_ROOT}/packages/ltx-causal/src:${LTX2_ROOT}/packages/ltx-core/src:${LTX2_ROOT}/packages/ltx-pipelines/src${PYTHONPATH:+:${PYTHONPATH}}"
 
-WARMUP_CHECKPOINT="${WARMUP_CHECKPOINT:-${DCM_CHECKPOINT:-}}"
+INIT_CHECKPOINT="${INIT_CHECKPOINT:-${WARMUP_CHECKPOINT:-${DCM_CHECKPOINT:-}}}"
 GENERATED_CONFIG=""
 cleanup_generated_config() {
     if [ -n "${GENERATED_CONFIG}" ]; then
@@ -100,27 +105,49 @@ cleanup_generated_config() {
 }
 trap cleanup_generated_config EXIT
 
-if [ -n "${WARMUP_CHECKPOINT}" ]; then
-    if [ "${MODE}" = "dcm" ]; then
-        echo "[warn] DCM_CHECKPOINT is ignored for mode=dcm" >&2
-    else
-        GENERATED_CONFIG="$(mktemp "${TMPDIR:-/tmp}/turbo-t2av-${MODE//[^a-zA-Z0-9]/_}.XXXXXX.yaml")"
-        "${PYTHON_BIN}" - "$CONFIG_PATH" "$GENERATED_CONFIG" "$WARMUP_CHECKPOINT" "${CHECKPOINT_LOAD_MODE:-parallel}" <<'PY'
+if [ -n "${INIT_CHECKPOINT}" ] && [ "${MODE}" = "dcm" ]; then
+    echo "[warn] INIT_CHECKPOINT/WARMUP_CHECKPOINT/DCM_CHECKPOINT is ignored for mode=dcm" >&2
+    INIT_CHECKPOINT=""
+fi
+
+if [ -n "${INIT_CHECKPOINT}" ] \
+    || [ -n "${MAX_STEPS:-}" ] \
+    || [ -n "${CHECKPOINT_ITERS:-}" ] \
+    || [ -n "${WANDB_NAME:-}" ] \
+    || [ -n "${OUTPUT_PATH:-}" ]; then
+    GENERATED_CONFIG="$(mktemp "${TMPDIR:-/tmp}/TurboT2AV-${MODE//[^a-zA-Z0-9]/_}.XXXXXX.yaml")"
+    "${PYTHON_BIN}" - \
+        "$CONFIG_PATH" \
+        "$GENERATED_CONFIG" \
+        "$INIT_CHECKPOINT" \
+        "${CHECKPOINT_LOAD_MODE:-parallel}" \
+        "${MAX_STEPS:-}" \
+        "${CHECKPOINT_ITERS:-}" \
+        "${WANDB_NAME:-}" \
+        "${OUTPUT_PATH:-}" <<'PY'
 import sys
 from omegaconf import OmegaConf
 
-src, dst, warmup, load_mode = sys.argv[1:5]
+src, dst, init_checkpoint, load_mode, max_steps, checkpoint_iters, wandb_name, output_path = sys.argv[1:9]
 cfg = OmegaConf.load(src)
-cfg.resume_checkpoint = warmup
-cfg.checkpoint_load_mode = load_mode
-cfg.resume_training_state = False
-cfg.skip_initial_checkpoint = True
-if "wandb_name" in cfg and not str(cfg.wandb_name).endswith("_from_dcm_warmup"):
-    cfg.wandb_name = f"{cfg.wandb_name}_from_dcm_warmup"
+if init_checkpoint:
+    cfg.resume_checkpoint = init_checkpoint
+    cfg.checkpoint_load_mode = load_mode
+    cfg.resume_training_state = False
+    cfg.skip_initial_checkpoint = True
+if max_steps:
+    cfg.max_steps = int(max_steps)
+if checkpoint_iters:
+    cfg.checkpoint_iters = int(checkpoint_iters)
+if output_path:
+    cfg.output_path = output_path
+if wandb_name:
+    cfg.wandb_name = wandb_name
+elif init_checkpoint and "wandb_name" in cfg and not str(cfg.wandb_name).endswith("_from_warmup"):
+    cfg.wandb_name = f"{cfg.wandb_name}_from_warmup"
 OmegaConf.save(cfg, dst)
 PY
-        CONFIG_PATH="${GENERATED_CONFIG}"
-    fi
+    CONFIG_PATH="${GENERATED_CONFIG}"
 fi
 
 NPROC_PER_NODE="${NPROC_PER_NODE:-${NUM_GPUS:-${LOCAL_WORLD_SIZE:-8}}}"
@@ -162,8 +189,8 @@ echo "${TITLE}"
 echo "========================================================"
 echo "Mode:          ${MODE}"
 echo "Config:        ${CONFIG_PATH}"
-if [ -n "${WARMUP_CHECKPOINT}" ] && [ "${MODE}" != "dcm" ]; then
-    echo "DCM warmup:    ${WARMUP_CHECKPOINT}"
+if [ -n "${INIT_CHECKPOINT}" ] && [ "${MODE}" != "dcm" ]; then
+    echo "Init ckpt:     ${INIT_CHECKPOINT}"
 fi
 echo "Nodes:         ${NNODES}  |  GPUs/Node: ${NPROC_PER_NODE}  |  Total: ${TOTAL_GPUS}"
 echo "Master:        ${MASTER_ADDR}:${MASTER_PORT}"
