@@ -8,7 +8,7 @@
 
 </div>
 
-**turbo-t2av** is a text-to-audio-video training and distillation project built around LTX-2 components. The repository contains data preparation tools, bidirectional DCM/SCM/DMD distillation recipes, causal ODE training, causal/self-forcing DMD training, and standalone inference scripts.
+**turbo-t2av** is a text-to-audio-video Stage 1 distillation project built around LTX-2 components. The current script surface is intentionally limited to bidirectional Stage 1 distillation: DCM warmup, SCM, DMD, and SCM+DMD.
 
 ## Setup
 
@@ -31,7 +31,7 @@ Download the base assets and update the paths in the YAML files under `LTX-2/pac
 | Asset | Default config key |
 | --- | --- |
 | `ltx-2-19b-dev.safetensors` | `checkpoint_path` |
-| `gemma-3-12b-it-qat-q4_0-unquantized` | `gemma_path` or `text_encoder_checkpoint` |
+| `gemma-3-12b-it-qat-q4_0-unquantized` | `gemma_path` |
 
 WandB credentials should be passed through the environment, not committed into configs:
 
@@ -39,73 +39,28 @@ WandB credentials should be passed through the environment, not committed into c
 export WANDB_API_KEY=...
 ```
 
-## Data Flow
+## Stage 1 Data
 
-Run these commands from `LTX-2/packages/ltx-distillation`.
+Stage 1 uses two data inputs:
 
-1. Prepare prompts.
+| Input | Config key | Used by |
+| --- | --- | --- |
+| Prompt text file, one prompt per line | `data_path` | DCM, DMD, SCM+DMD |
+| SCM latent LMDB/root | `scm_data_path` | SCM, SCM+DMD |
 
-```bash
-cd ../pe
-python batch_enhance.py captions.txt --duration 5s
-python enhance_prompts_light.py --input captions.txt --output prompts.txt
-cd ../ltx-distillation
+Before launching training, edit the selected config and point these fields to existing local data:
+
+```yaml
+checkpoint_path: /path/to/ltx-2-19b-dev.safetensors
+gemma_path: /path/to/gemma-3-12b-it-qat-q4_0-unquantized
+data_path: /path/to/prompts.txt
+scm_data_path: /path/to/scm_latent_lmdb_or_root
+output_path: /path/to/outputs
 ```
 
-2. Reconstruct/download a video-caption dataset when using TAVGBench-style sources.
+## Stage 1 Training
 
-```bash
-CAPTIONS_FILE=/path/to/release_captions.txt \
-OUTPUT_DIR=/path/to/tavgbench \
-./scripts/reconstruct_tavgbench_dataset.sh
-
-CAPTIONS_FILE=/path/to/release_captions.txt \
-VIDEO_DIR=/path/to/tavgbench/video_clips \
-OUTPUT_FILE=/path/to/tavgbench/turbo-t2av_video_caption_manifest.jsonl \
-./scripts/build_video_caption_manifest.sh
-```
-
-3. Build SCM latent data from real video/audio samples.
-
-```bash
-MANIFEST_PATH=/path/to/tavgbench/turbo-t2av_video_caption_manifest.jsonl \
-OUTPUT_LMDB=/path/to/turbo-t2av_latent_100k \
-CHECKPOINT_PATH=/path/to/ltx-2-19b-dev.safetensors \
-./scripts/create_scm_latent_lmdb_8gpu.sh
-
-LMDB_ROOT=/path/to/turbo-t2av_latent_100k \
-CHECKPOINT_PATH=/path/to/ltx-2-19b-dev.safetensors \
-./scripts/verify_scm_latent_decode.sh
-```
-
-4. Optionally build pseudo-SCM latents from teacher generations.
-
-```bash
-PROMPTS_FILE=/path/to/prompts.txt \
-OUTPUT_LMDB=/path/to/scm_latent_teacher_native_rf_100000_shards \
-PREVIEW_DIR=/path/to/scm_latent_teacher_preview \
-./scripts/launch_teacher_scm_latent_100000_8gpu.sh
-
-SHARDS_ROOT=/path/to/scm_latent_teacher_native_rf_100000_shards \
-OUTPUT_LMDB=/path/to/scm_latent_teacher_native_rf_100000 \
-./scripts/merge_teacher_scm_latent_shards.sh
-```
-
-5. Build ODE data for causal training.
-
-```bash
-TEACHER_CHECKPOINT=/path/to/bidirectional/checkpoints/checkpoint_XXXXXX/model.pth \
-GEMMA_PATH=/path/to/gemma-3-12b-it-qat-q4_0-unquantized \
-PROMPTS_FILE=/path/to/prompts.txt \
-OUTPUT_DIR=/path/to/ode_pairs \
-./scripts/generate_ode_pairs.sh
-
-DATA_PATH=/path/to/ode_pairs \
-LMDB_PATH=/path/to/ode_lmdb \
-./scripts/create_ode_lmdb.sh
-```
-
-## Bidirectional Training
+Run commands from `LTX-2/packages/ltx-distillation`.
 
 The unified launcher is `./scripts/train_bidirectional.sh`. The short wrapper scripts call the same launcher:
 
@@ -127,7 +82,18 @@ NUM_GPUS=8 MASTER_PORT=29502 ./scripts/train_dmd.sh
 NUM_GPUS=8 MASTER_PORT=29503 ./scripts/train_scm_dmd.sh
 ```
 
-SCM, DMD, and SCM+DMD can all start from a DCM checkpoint. Treat DCM as the warmup stage and pass the DCM checkpoint through `DCM_CHECKPOINT`. The launcher injects:
+You can also pass an explicit config:
+
+```bash
+NUM_GPUS=8 MASTER_PORT=29510 \
+./scripts/train_bidirectional.sh scm configs/stage1_bidirectional_scm.yaml
+```
+
+## DCM As Warmup
+
+SCM, DMD, and SCM+DMD can all start from a DCM checkpoint. Treat DCM as the warmup stage and pass the DCM checkpoint through `DCM_CHECKPOINT`.
+
+The launcher injects these config values into a temporary YAML:
 
 ```yaml
 resume_checkpoint: <DCM_CHECKPOINT>
@@ -159,87 +125,25 @@ NNODES=4 NODE_RANK=0 MASTER_ADDR=10.0.0.1 NUM_GPUS=8 \
 ./scripts/train_scm_dmd.sh
 ```
 
-Bidirectional checkpoints are saved as:
+Stage 1 checkpoints are saved as:
 
 ```text
 <output_path>/<run_dir>/checkpoints/checkpoint_XXXXXX/model.pth
 ```
 
-## Causal Training
+## Kept Scripts
 
-After a bidirectional model is trained, generate ODE pairs and LMDB data, then train the causal ODE model:
-
-```bash
-./scripts/train_stage2_causal_ode.sh configs/stage2_causal_ode.yaml
-```
-
-Update `configs/stage2_causal_ode.yaml` before launching:
-
-```yaml
-checkpoint_path: /path/to/ltx-2-19b-dev.safetensors
-bidirectional_model_checkpoint: /path/to/bidirectional/checkpoints/checkpoint_XXXXXX/model.pth
-text_encoder_checkpoint: /path/to/gemma-3-12b-it-qat-q4_0-unquantized
-data_path: /path/to/ode_lmdb
-```
-
-Causal ODE checkpoints are saved as:
+Only Stage 1 distillation scripts are kept in `LTX-2/packages/ltx-distillation/scripts/`:
 
 ```text
-<output_path>/checkpoints/checkpoint_XXXXXX/model.pt
+train_bidirectional.sh
+train_dcm.sh
+train_scm.sh
+train_dmd.sh
+train_scm_dmd.sh
+train_stage1_bidirectional_dmd.sh
+train_stage1_bidirectional_rcm.sh
 ```
-
-Then train causal/self-forcing DMD:
-
-```bash
-./scripts/train_stage3_causal_dmd.sh configs/stage3_causal_dmd.yaml
-```
-
-Update `configs/stage3_causal_dmd.yaml`:
-
-```yaml
-checkpoint_path: /path/to/ltx-2-19b-dev.safetensors
-gemma_path: /path/to/gemma-3-12b-it-qat-q4_0-unquantized
-stage1_ckpt_path: /path/to/stage2_causal_ode/checkpoints/checkpoint_XXXXXX/model.pt
-generator_ckpt: /path/to/bidirectional/checkpoints/checkpoint_XXXXXX/model.pth
-bootstrap_bidirectional_ckpt_path: /path/to/bidirectional/checkpoints/checkpoint_XXXXXX/model.pth
-data_path: /path/to/ode_lmdb
-benchmark_prompt_file: /path/to/prompts.txt
-```
-
-## Inference
-
-Use `./scripts/infer_av.sh` for standalone inference. Student inference requires a trained checkpoint:
-
-```bash
-STUDENT_CHECKPOINT=/path/to/run/checkpoints/checkpoint_XXXXXX/model.pth \
-CONFIG_PATH=configs/stage1_bidirectional_dmd.yaml \
-PROMPTS_FILE=/path/to/prompts.txt \
-OUTPUT_DIR=./outputs/infer_student \
-NUM_PROMPTS=8 \
-./scripts/infer_av.sh student
-```
-
-Teacher/base-model inference:
-
-```bash
-MODEL_KIND=teacher \
-CONFIG_PATH=configs/stage1_bidirectional_dmd.yaml \
-PROMPTS_FILE=/path/to/prompts.txt \
-OUTPUT_DIR=./outputs/infer_teacher \
-TEACHER_MODE=native_rf \
-TEACHER_STEPS=40 \
-NUM_PROMPTS=8 \
-./scripts/infer_av.sh
-```
-
-For sharded inference:
-
-```bash
-NUM_SHARDS=8 SHARD_ID=0 CUDA_VISIBLE_DEVICES=0 ./scripts/infer_av.sh student
-NUM_SHARDS=8 SHARD_ID=1 CUDA_VISIBLE_DEVICES=1 ./scripts/infer_av.sh student
-```
-
-Outputs are written as `sample_XXXX.mp4` plus prompt index files in `OUTPUT_DIR`.
 
 ## Repository Structure
 
