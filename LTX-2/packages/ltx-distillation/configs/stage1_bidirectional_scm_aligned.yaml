@@ -1,7 +1,7 @@
 # Stage 1: SCM-only (aligned with rCM paper) — no DMD/critic
 # Simpler, more memory-efficient, fewer moving parts
-checkpoint_path: /data/datasets/turbodiff_datasets_and_ckpt/omniforcing/ltx-2-19b-dev.safetensors
-gemma_path: /data/datasets/turbodiff_datasets_and_ckpt/omniforcing/gemma-3-12b-it-qat-q4_0-unquantized
+checkpoint_path: /data/datasets/turbodiff_datasets_and_ckpt/turbo-t2av/ltx-2-19b-dev.safetensors
+gemma_path: /data/datasets/turbodiff_datasets_and_ckpt/turbo-t2av/gemma-3-12b-it-qat-q4_0-unquantized
 
 model_name: ltx2_av
 
@@ -34,7 +34,7 @@ distillation_loss: dmd
 
 # ===== SCM (aligned with rCM) =====
 scm_enabled: true
-scm_data_path: /data/datasets/turbodiff_datasets_and_ckpt/tavgbench/omniforcing_latent_100k
+scm_data_path: /data/datasets/turbodiff_datasets_and_ckpt/tavgbench/turbo-t2av_latent_100k
 scm_batch_size: 1
 scm_max_pair: 100000000
 scm_weight: 1.0
@@ -87,13 +87,13 @@ fake_score_fsdp_wrap_strategy: size
 text_encoder_fsdp_wrap_strategy: size
 
 # ===== Output =====
-output_path: /data/datasets/turbodiff_datasets_and_ckpt/my_omniforcing
+output_path: /data/datasets/turbodiff_datasets_and_ckpt/my_turbo-t2av
 log_iters: 1                      # Log every step
 train_log_all_scalars: true
 checkpoint_iters: 500
 skip_initial_checkpoint: true     # Don't gather 19B params at step 0
 
-resume_checkpoint: /data/datasets/turbodiff_datasets_and_ckpt/my_omniforcing/0512_013058_stage1_scm_aligned/checkpoints/checkpoint_001000/model.pt
+resume_checkpoint: /data/datasets/turbodiff_datasets_and_ckpt/my_turbo-t2av/0512_013058_stage1_scm_aligned/checkpoints/checkpoint_001000/model.pt
 
 # ===== Formal training =====
 
@@ -103,7 +103,7 @@ benchmark_iters: 50                 # Run every 50 steps
 benchmark_num_prompts: 8
 
 # ===== W&B =====
-wandb_project: OmniForcing
+wandb_project: turbo-t2av
 wandb_entity: liuyuxiang1021-tianjin-university
 wandb_name: stage1_scm_aligned
 wandb_api_key: "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"

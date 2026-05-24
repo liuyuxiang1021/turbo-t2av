@@ -85,7 +85,7 @@ benchmark_audio_sample_rate: 24000
 benchmark_num_frame_per_block: 3
 benchmark_clear_cuda_cache_per_round: true
 
-wandb_project: OmniForcing
+wandb_project: turbo-t2av
 wandb_entity: your-wandb-entity
 wandb_name: stage2_causal_ode
 # wandb_api_key: "your-wandb-api-key"

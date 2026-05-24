@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PIXI_ENV_DIR="${PIXI_ENV_DIR:-/home/jovyan/codes/turbodiff/new_Turbo/OmniForcing/LTX-2/packages/ltx-distillation/downloader-env/.pixi/envs/default}"
+PIXI_ENV_DIR="${PIXI_ENV_DIR:-/home/jovyan/codes/turbodiff/new_Turbo/turbo-t2av/LTX-2/packages/ltx-distillation/downloader-env/.pixi/envs/default}"
 BGUTIL_BASE_URL="${BGUTIL_BASE_URL:-http://127.0.0.1:4416}"
 
 if [ -n "${VENV_PATH:-}" ] && [ -f "${VENV_PATH}/bin/activate" ]; then

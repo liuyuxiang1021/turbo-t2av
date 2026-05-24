@@ -106,7 +106,7 @@ def init_logging_folder(config: DictConfig):
 
     # Initialize wandb
     wandb.init(
-        project=config.get("wandb_project", "Omniforcing-Stage2-OdeInit"),
+        project=config.get("wandb_project", "turbo-t2av-stage2-odeinit"),
         entity=config.get("wandb_entity", None),
         name=config.get("wandb_name", "ltx2_causal_ode"),
         dir=wandb_folder,

@@ -11,7 +11,7 @@ export PYTHONPATH="${DISTILLATION_ROOT}/src${PYTHONPATH:+:${PYTHONPATH}}"
 
 CAPTIONS_FILE="${CAPTIONS_FILE:-/data/datasets/turbodiff_datasets_and_ckpt/tavgbench/release_captions.txt}"
 VIDEO_DIR="${VIDEO_DIR:-/data/datasets/turbodiff_datasets_and_ckpt/tavgbench/video_clips}"
-OUTPUT_FILE="${OUTPUT_FILE:-/data/datasets/turbodiff_datasets_and_ckpt/tavgbench/omniforcing_video_caption_manifest.jsonl}"
+OUTPUT_FILE="${OUTPUT_FILE:-/data/datasets/turbodiff_datasets_and_ckpt/tavgbench/turbo-t2av_video_caption_manifest.jsonl}"
 
 cd "${DISTILLATION_ROOT}"
 python -m ltx_distillation.tools.build_video_caption_manifest \

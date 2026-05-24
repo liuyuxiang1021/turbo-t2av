@@ -1,5 +1,5 @@
 # =============================================================================
-# Omni-Forcing Project .gitignore
+# turbo-t2av Project .gitignore
 # =============================================================================
 
 # =============================================================================
@@ -265,5 +265,5 @@ LightX2V/save_results/*
 !README*.md
 !LICENSE
 
-/pfs/yuming/code/realtime_long_video/OminiForcing/omni-forcing/LTX-2/packages/ltx-distillation/scripts/train_single_node.sh
-/pfs/yuming/code/realtime_long_video/OminiForcing/omni-forcing/LTX-2/packages/ltx-distillation/configs/ltx2_bidirectional_dmd.yaml
+/pfs/yuming/code/realtime_long_video/turbo-t2av/turbo-t2av/LTX-2/packages/ltx-distillation/scripts/train_single_node.sh
+/pfs/yuming/code/realtime_long_video/turbo-t2av/turbo-t2av/LTX-2/packages/ltx-distillation/configs/ltx2_bidirectional_dmd.yaml

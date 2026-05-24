@@ -338,11 +338,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--shard_id", type=int, default=0)
     parser.add_argument(
         "--output_lmdb",
-        default="/data/datasets/turbodiff_datasets_and_ckpt/my_omniforcing/scm_latent_teacher_1000",
+        default="/data/datasets/turbodiff_datasets_and_ckpt/my_turbo-t2av/scm_latent_teacher_1000",
     )
     parser.add_argument(
         "--preview_dir",
-        default="/data/datasets/turbodiff_datasets_and_ckpt/my_omniforcing/scm_latent_teacher_1000_preview",
+        default="/data/datasets/turbodiff_datasets_and_ckpt/my_turbo-t2av/scm_latent_teacher_1000_preview",
     )
     parser.add_argument("--preview_count", type=int, default=16)
     parser.add_argument("--mode", choices=["native_rf", "rcm_trig"], default="native_rf")

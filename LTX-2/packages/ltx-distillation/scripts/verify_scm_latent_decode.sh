@@ -6,8 +6,8 @@ if [ -n "${VENV_PATH:-}" ] && [ -f "${VENV_PATH}/bin/activate" ]; then
     source "${VENV_PATH}/bin/activate"
 fi
 
-LMDB_ROOT="${LMDB_ROOT:-/data/datasets/turbodiff_datasets_and_ckpt/tavgbench/omniforcing_latent}"
-CHECKPOINT_PATH="${CHECKPOINT_PATH:-/data/datasets/turbodiff_datasets_and_ckpt/omniforcing/ltx-2-19b-dev.safetensors}"
+LMDB_ROOT="${LMDB_ROOT:-/data/datasets/turbodiff_datasets_and_ckpt/tavgbench/turbo-t2av_latent}"
+CHECKPOINT_PATH="${CHECKPOINT_PATH:-/data/datasets/turbodiff_datasets_and_ckpt/turbo-t2av/ltx-2-19b-dev.safetensors}"
 OUTPUT_DIR="${OUTPUT_DIR:-/data/datasets/turbodiff_datasets_and_ckpt/tavgbench/latent_decode_check}"
 NUM_SAMPLES="${NUM_SAMPLES:-10}"
 SAMPLES_PER_SHARD="${SAMPLES_PER_SHARD:-}"

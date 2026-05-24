@@ -1,12 +1,12 @@
 # =============================================================================
 # Stage 1: Bidirectional rCM Distillation (DMD + SCM)
 # =============================================================================
-# This is the faithful Stage-1 rCM configuration for OmniForcing/LTX:
+# This is the faithful Stage-1 rCM configuration for turbo-t2av/LTX:
 # - DMD uses rollout-generated samples in TrigFlow time
 # - SCM uses real clean latents from an ODE LMDB dataset
 
-checkpoint_path: /data/datasets/turbodiff_datasets_and_ckpt/omniforcing/ltx-2-19b-dev.safetensors
-gemma_path: /data/datasets/turbodiff_datasets_and_ckpt/omniforcing/gemma-3-12b-it-qat-q4_0-unquantized
+checkpoint_path: /data/datasets/turbodiff_datasets_and_ckpt/turbo-t2av/ltx-2-19b-dev.safetensors
+gemma_path: /data/datasets/turbodiff_datasets_and_ckpt/turbo-t2av/gemma-3-12b-it-qat-q4_0-unquantized
 
 model_name: ltx2_av
 
@@ -43,7 +43,7 @@ denoising_loss_type: velocity
 distillation_loss: dmd
 
 scm_enabled: true
-scm_data_path: /data/datasets/turbodiff_datasets_and_ckpt/my_omniforcing/scm_latent_teacher_native_rf_debug40
+scm_data_path: /data/datasets/turbodiff_datasets_and_ckpt/my_turbo-t2av/scm_latent_teacher_native_rf_debug40
 scm_batch_size: 1
 scm_max_pair: 40
 scm_weight: 1.0
@@ -88,11 +88,11 @@ real_score_fsdp_wrap_strategy: size
 fake_score_fsdp_wrap_strategy: size
 text_encoder_fsdp_wrap_strategy: size
 
-output_path: /data/datasets/turbodiff_datasets_and_ckpt/my_omniforcing
+output_path: /data/datasets/turbodiff_datasets_and_ckpt/my_turbo-t2av
 log_iters: 1
 max_steps: 1
 
-wandb_project: OmniForcing
+wandb_project: turbo-t2av
 wandb_entity: liuyuxiang1021-tianjin-university
 wandb_name: stage1_bidirectional_rcm_debug
 wandb_api_key: "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"

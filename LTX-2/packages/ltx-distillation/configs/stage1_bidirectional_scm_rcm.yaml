@@ -1,9 +1,9 @@
 # Stage 1: SCM-only from checkpoint 1000 (DCM warmup → SCM).
 # Re-testing SCM-only stability from ckpt 1000.
 
-checkpoint_path: /data/datasets/turbodiff_datasets_and_ckpt/omniforcing/ltx-2-19b-dev.safetensors
-resume_checkpoint: /data/datasets/turbodiff_datasets_and_ckpt/my_omniforcing/0520_011955_scm_from_dcm_warmup/checkpoints/checkpoint_001000/model.pth
-gemma_path: /data/datasets/turbodiff_datasets_and_ckpt/omniforcing/gemma-3-12b-it-qat-q4_0-unquantized
+checkpoint_path: /data/datasets/turbodiff_datasets_and_ckpt/turbo-t2av/ltx-2-19b-dev.safetensors
+resume_checkpoint: /data/datasets/turbodiff_datasets_and_ckpt/my_turbo-t2av/0520_011955_scm_from_dcm_warmup/checkpoints/checkpoint_001000/model.pth
+gemma_path: /data/datasets/turbodiff_datasets_and_ckpt/turbo-t2av/gemma-3-12b-it-qat-q4_0-unquantized
 
 model_name: ltx2_av
 
@@ -33,7 +33,7 @@ dcm_enabled: false
 dcm_weight: 1.0
 dcm_loss_scale: 100.0
 dcm_total_steps: 48
-scm_data_path: /data/datasets/turbodiff_datasets_and_ckpt/tavgbench/omniforcing_latent_100k
+scm_data_path: /data/datasets/turbodiff_datasets_and_ckpt/tavgbench/turbo-t2av_latent_100k
 scm_weight: 1.0
 scm_loss_scale: 100.0
 scm_p_G_mean: 1.5               # SCM-only: higher noise, noise-dominant
@@ -94,7 +94,7 @@ fake_score_fsdp_wrap_strategy: size
 text_encoder_fsdp_wrap_strategy: size
 
 # ===== Output =====
-output_path: /data/datasets/turbodiff_datasets_and_ckpt/my_omniforcing
+output_path: /data/datasets/turbodiff_datasets_and_ckpt/my_turbo-t2av
 log_iters: 1
 train_log_all_scalars: true
 checkpoint_iters: 100
@@ -114,7 +114,7 @@ teacher_benchmark_40step_num_inference_steps: 40
 student_benchmark_use_cfg: false     # SCM distills CFG teacher into conditional student; avoid double CFG at inference.
 benchmark_num_prompts: 8
 
-wandb_project: OmniForcing
+wandb_project: turbo-t2av
 wandb_entity: liuyuxiang1021-tianjin-university
 wandb_name: scm_only_from_ckpt1000
 wandb_api_key: "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"

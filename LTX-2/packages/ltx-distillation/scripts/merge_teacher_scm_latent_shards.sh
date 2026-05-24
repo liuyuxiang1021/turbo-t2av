@@ -14,8 +14,8 @@ if [ ! -x "${PYTHON_BIN}" ]; then
   PYTHON_BIN="python3"
 fi
 
-SHARDS_ROOT="${SHARDS_ROOT:-/data/datasets/turbodiff_datasets_and_ckpt/my_omniforcing/scm_latent_teacher_native_rf_100000_shards}"
-OUTPUT_LMDB="${OUTPUT_LMDB:-/data/datasets/turbodiff_datasets_and_ckpt/my_omniforcing/scm_latent_teacher_native_rf_100000}"
+SHARDS_ROOT="${SHARDS_ROOT:-/data/datasets/turbodiff_datasets_and_ckpt/my_turbo-t2av/scm_latent_teacher_native_rf_100000_shards}"
+OUTPUT_LMDB="${OUTPUT_LMDB:-/data/datasets/turbodiff_datasets_and_ckpt/my_turbo-t2av/scm_latent_teacher_native_rf_100000}"
 MAP_SIZE="${MAP_SIZE:-2000000000000}"
 COMMIT_INTERVAL="${COMMIT_INTERVAL:-8}"
 OVERWRITE="${OVERWRITE:-0}"

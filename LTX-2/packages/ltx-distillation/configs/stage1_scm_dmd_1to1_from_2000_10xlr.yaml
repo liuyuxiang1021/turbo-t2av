@@ -1,8 +1,8 @@
-checkpoint_path: /data/datasets/turbodiff_datasets_and_ckpt/omniforcing/ltx-2-19b-dev.safetensors
-resume_checkpoint: /data/datasets/turbodiff_datasets_and_ckpt/my_omniforcing/0520_011955_scm_from_dcm_warmup/checkpoints/checkpoint_002000/model.pth
+checkpoint_path: /data/datasets/turbodiff_datasets_and_ckpt/turbo-t2av/ltx-2-19b-dev.safetensors
+resume_checkpoint: /data/datasets/turbodiff_datasets_and_ckpt/my_turbo-t2av/0520_011955_scm_from_dcm_warmup/checkpoints/checkpoint_002000/model.pth
 checkpoint_load_mode: parallel
 resume_training_state: false
-gemma_path: /data/datasets/turbodiff_datasets_and_ckpt/omniforcing/gemma-3-12b-it-qat-q4_0-unquantized
+gemma_path: /data/datasets/turbodiff_datasets_and_ckpt/turbo-t2av/gemma-3-12b-it-qat-q4_0-unquantized
 model_name: ltx2_av
 generator_grad:
   model: true
@@ -36,7 +36,7 @@ dcm_enabled: false
 dcm_weight: 1.0
 dcm_loss_scale: 100.0
 dcm_total_steps: 48
-scm_data_path: /data/datasets/turbodiff_datasets_and_ckpt/tavgbench/omniforcing_latent_100k
+scm_data_path: /data/datasets/turbodiff_datasets_and_ckpt/tavgbench/turbo-t2av_latent_100k
 scm_weight: 1.0
 scm_loss_scale: 1.0
 scm_p_G_mean: 0.7
@@ -84,7 +84,7 @@ text_encoder_cpu_offload: false
 real_score_fsdp_wrap_strategy: size
 fake_score_fsdp_wrap_strategy: size
 text_encoder_fsdp_wrap_strategy: size
-output_path: /data/datasets/turbodiff_datasets_and_ckpt/my_omniforcing
+output_path: /data/datasets/turbodiff_datasets_and_ckpt/my_turbo-t2av
 log_iters: 1
 train_log_all_scalars: true
 checkpoint_iters: 500
@@ -102,7 +102,7 @@ teacher_benchmark_include_40step_reference: true
 teacher_benchmark_40step_num_inference_steps: 40
 student_benchmark_use_cfg: false
 benchmark_num_prompts: 8
-wandb_project: OmniForcing
+wandb_project: turbo-t2av
 wandb_entity: liuyuxiang1021-tianjin-university
 wandb_name: scm_dmd_1to1_from_2000_10xlr
 wandb_api_key: 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

@@ -11,8 +11,8 @@
 #   - scm_g_normalization: per_modality (matches rCM's L2-norm per sample)
 # =============================================================================
 
-checkpoint_path: /data/datasets/turbodiff_datasets_and_ckpt/omniforcing/ltx-2-19b-dev.safetensors
-gemma_path: /data/datasets/turbodiff_datasets_and_ckpt/omniforcing/gemma-3-12b-it-qat-q4_0-unquantized
+checkpoint_path: /data/datasets/turbodiff_datasets_and_ckpt/turbo-t2av/ltx-2-19b-dev.safetensors
+gemma_path: /data/datasets/turbodiff_datasets_and_ckpt/turbo-t2av/gemma-3-12b-it-qat-q4_0-unquantized
 
 model_name: ltx2_av
 
@@ -52,7 +52,7 @@ distillation_loss: dmd
 
 # ============ SCM (aligned with rCM) ============
 scm_enabled: true
-scm_data_path: /data/datasets/turbodiff_datasets_and_ckpt/tavgbench/omniforcing_latent_100k
+scm_data_path: /data/datasets/turbodiff_datasets_and_ckpt/tavgbench/turbo-t2av_latent_100k
 scm_batch_size: 1
 scm_max_pair: 100000000
 scm_weight: 1.0
@@ -106,11 +106,11 @@ fake_score_fsdp_wrap_strategy: size
 text_encoder_fsdp_wrap_strategy: size
 text_encoder_cpu_offload: false
 
-output_path: /data/datasets/turbodiff_datasets_and_ckpt/my_omniforcing
+output_path: /data/datasets/turbodiff_datasets_and_ckpt/my_turbo-t2av
 log_iters: 2                   # Smoke test: log every 2 steps
 train_log_all_scalars: true
 
-wandb_project: OmniForcing
+wandb_project: turbo-t2av
 wandb_entity: liuyuxiang1021-tianjin-university
 wandb_name: stage1_bidirectional_rcm_aligned
 wandb_api_key: "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"
