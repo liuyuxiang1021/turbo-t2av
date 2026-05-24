@@ -1,9 +1,10 @@
 # =============================================================================
-# Stage 1: Bidirectional DCM + DMD
+# Stage 1: Bidirectional SCM + DMD
 # =============================================================================
-# DMD hyperparameters are aligned with:
-# /data/datasets/turbodiff_datasets_and_ckpt/my_turbo-t2av/0419_173122_stage1_bidirectional_dmd
-# DCM hyperparameters are aligned with the current bidirectional DCM recipe.
+# Joint recipe:
+# - DMD uses rollout-generated samples in TrigFlow time.
+# - SCM uses clean latents from scm_data_path.
+# - Set DCM_CHECKPOINT in scripts/train_scm_dmd.sh to use DCM as warmup.
 
 checkpoint_path: /data/datasets/turbodiff_datasets_and_ckpt/turbo-t2av/ltx-2-19b-dev.safetensors
 gemma_path: /data/datasets/turbodiff_datasets_and_ckpt/turbo-t2av/gemma-3-12b-it-qat-q4_0-unquantized
@@ -19,13 +20,6 @@ fake_score_grad:
 
 dmd_enabled: true
 critic_enabled: true
-dcm_enabled: true
-dcm_weight: 1.0
-dcm_loss_scale: 100.0
-dcm_total_steps: 48
-dcm_skipping_interval_steps: 1
-dcm_timestep_shift: 5.0
-
 dmd_style: rcm_trig
 dmd_p_D_shift: 5.0
 backward_trig_timesteps:
@@ -51,7 +45,7 @@ fake_task_type: bidirectional_av
 denoising_loss_type: velocity
 distillation_loss: dmd
 
-scm_enabled: false
+scm_enabled: true
 scm_data_path: /data/datasets/turbodiff_datasets_and_ckpt/tavgbench/turbo-t2av_latent_100k
 scm_batch_size: 1
 scm_max_pair: 100000000
@@ -59,10 +53,11 @@ scm_weight: 1.0
 scm_loss_scale: 100.0
 scm_p_G_mean: 0.7
 scm_p_G_std: 1.6
-scm_fd_type: 2
-scm_fd_size: 0.0001
-scm_tangent_warmup: 1000
-scm_time_eps: 0.0001
+scm_fd_type: 0
+scm_strict_rcm: true
+scm_fd_size: 1.0e-4
+scm_tangent_warmup: 200
+scm_time_eps: 1.0e-4
 
 mixed_precision: true
 gradient_checkpointing: true
@@ -102,7 +97,7 @@ checkpoint_iters: 500
 
 wandb_project: turbo-t2av
 wandb_entity: liuyuxiang1021-tianjin-university
-wandb_name: stage1_bidirectional_dcm_dmd
+wandb_name: stage1_bidirectional_scm_dmd
 
 seed: 42
 
@@ -119,5 +114,4 @@ teacher_benchmark_audio_guidance_scale: 5.0
 teacher_benchmark_mode: rcm_trig
 teacher_benchmark_include_native_rf_reference: true
 no_save: false
-skip_initial_checkpoint: true
 no_visualize: false

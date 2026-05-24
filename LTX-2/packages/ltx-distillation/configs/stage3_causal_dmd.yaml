@@ -160,7 +160,6 @@ log_iters: 200
 wandb_project: turbo-t2av
 wandb_entity: your-wandb-entity
 wandb_name: stage3_self_forcing_dmd
-# wandb_api_key: "your-wandb-api-key"
 
 seed: 42
 no_save: false

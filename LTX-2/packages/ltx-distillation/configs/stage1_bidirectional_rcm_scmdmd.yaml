@@ -112,7 +112,6 @@ teacher_benchmark_include_native_rf_reference: false
 wandb_project: turbo-t2av
 wandb_entity: liuyuxiang1021-tianjin-university
 wandb_name: stage1_scmdmd_aligned
-wandb_api_key: "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"
 
 seed: 42
 no_visualize: false

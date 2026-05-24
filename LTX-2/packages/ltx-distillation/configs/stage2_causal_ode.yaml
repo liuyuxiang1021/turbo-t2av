@@ -88,7 +88,6 @@ benchmark_clear_cuda_cache_per_round: true
 wandb_project: turbo-t2av
 wandb_entity: your-wandb-entity
 wandb_name: stage2_causal_ode
-# wandb_api_key: "your-wandb-api-key"
 
 seed: 42
 no_save: false

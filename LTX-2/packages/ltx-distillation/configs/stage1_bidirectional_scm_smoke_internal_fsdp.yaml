@@ -101,7 +101,6 @@ max_steps: 1
 wandb_project: turbo-t2av
 wandb_entity: liuyuxiang1021-tianjin-university
 wandb_name: stage1_bidirectional_scm_smoke_internal_fsdp
-wandb_api_key: "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"
 
 seed: 42
 
