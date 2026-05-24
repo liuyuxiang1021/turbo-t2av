@@ -40,7 +40,7 @@ dcm_loss_scale: 100.0
 dcm_total_steps: 48
 scm_data_path: /data/datasets/turbodiff_datasets_and_ckpt/tavgbench/omniforcing_latent_100k
 scm_weight: 1.0
-scm_loss_scale: 100.0
+scm_loss_scale: 10.0
 scm_p_G_mean: 0.7
 scm_p_G_std: 1.6
 scm_consistency_boost: 1.0
@@ -69,7 +69,7 @@ share_scm_dmd_batch: true
 max_grad_norm: 3.0
 scheduler_type: constant
 warmup_steps: 0
-max_steps: 2051
+max_steps: 30000
 min_lr: 2.0e-06
 ema_enabled: false
 mixed_precision: true
@@ -110,7 +110,7 @@ student_benchmark_use_cfg: false
 benchmark_num_prompts: 8
 wandb_project: OmniForcing
 wandb_entity: liuyuxiang1021-tianjin-university
-wandb_name: scm_dmd_sum_scm100_dmd1_to2051_from_1000_reverse_scm_sharedbatch
+wandb_name: scm_dmd_sum_scm10_dmd1_after2051_from_1000_reverse_scm_sharedbatch
 wandb_api_key: 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
 seed: 42
 no_visualize: false
