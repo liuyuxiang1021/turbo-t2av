@@ -2,8 +2,6 @@
 
 # turbo-t2av
 
-<img src="static/images/teaser_2.png" width="100%">
-
 <a href="https://github.com/liuyuxiang1021/TurboT2AV"><img src="https://img.shields.io/badge/GitHub-TurboT2AV-blue.svg" alt="GitHub"></a>
 
 </div>
