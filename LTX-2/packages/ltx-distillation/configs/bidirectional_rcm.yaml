@@ -1,7 +1,7 @@
 # =============================================================================
-# Stage 1: Bidirectional rCM Distillation (DMD + SCM)
+# Bidirectional rCM Distillation (DMD + SCM)
 # =============================================================================
-# This is the faithful Stage-1 rCM configuration for turbo-t2av/LTX:
+# This is the faithful rCM configuration for turbo-t2av/LTX:
 # - DMD uses rollout-generated samples in TrigFlow time
 # - SCM uses real clean latents from an ODE LMDB dataset
 
@@ -95,7 +95,7 @@ log_iters: 200
 
 wandb_project: turbo-t2av
 wandb_entity: liuyuxiang1021-tianjin-university
-wandb_name: stage1_bidirectional_rcm
+wandb_name: bidirectional_rcm
 
 seed: 42
 

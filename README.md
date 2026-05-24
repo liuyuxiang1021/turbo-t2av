@@ -8,7 +8,7 @@
 
 </div>
 
-**turbo-t2av** is a text-to-audio-video Stage 1 distillation project built around LTX-2 components. The current script surface is intentionally limited to bidirectional Stage 1 distillation: DCM warmup, SCM, DMD, and rCM-style joint SCM+DMD.
+**turbo-t2av** is a text-to-audio-video distillation project built around LTX-2 components. The current script surface is intentionally limited to bidirectional distillation: DCM warmup, SCM, DMD, and rCM-style joint SCM+DMD.
 
 ## Setup
 
@@ -39,9 +39,9 @@ WandB credentials should be passed through the environment, not committed into c
 export WANDB_API_KEY=...
 ```
 
-## Stage 1 Data
+## Distillation Data
 
-Stage 1 uses two data inputs:
+The distillation recipes use two data inputs:
 
 | Input | Config key | Used by |
 | --- | --- | --- |
@@ -58,18 +58,18 @@ scm_data_path: /path/to/scm_latent_lmdb_or_root
 output_path: /path/to/outputs
 ```
 
-## Stage 1 Training
+## Distillation Training
 
 Run commands from `LTX-2/packages/ltx-distillation`.
 
 The unified launcher is `./scripts/train_bidirectional.sh`. The short wrapper scripts call the same launcher:
 
-| Mode | Wrapper | Default config |
-| --- | --- | --- |
-| DCM warmup | `./scripts/train_dcm.sh` | `configs/stage1_bidirectional_dcm.yaml` |
-| SCM only | `./scripts/train_scm.sh` | `configs/stage1_bidirectional_scm.yaml` |
-| DMD only | `./scripts/train_dmd.sh` | `configs/stage1_bidirectional_dmd.yaml` |
-| rCM-style SCM + DMD | `./scripts/train_rcm.sh` | `configs/stage1_bidirectional_rcm.yaml` |
+| Mode | Wrapper |
+| --- | --- |
+| DCM warmup | `./scripts/train_dcm.sh` |
+| SCM only | `./scripts/train_scm.sh` |
+| DMD only | `./scripts/train_dmd.sh` |
+| rCM-style SCM + DMD | `./scripts/train_rcm.sh` |
 
 `./scripts/train_scm_dmd.sh` is kept as a compatibility alias for `./scripts/train_rcm.sh`.
 
@@ -88,7 +88,7 @@ You can also pass an explicit config:
 
 ```bash
 NUM_GPUS=8 MASTER_PORT=29510 \
-./scripts/train_bidirectional.sh scm configs/stage1_bidirectional_scm.yaml
+./scripts/train_bidirectional.sh scm /path/to/config.yaml
 ```
 
 ## DCM As Warmup
@@ -127,7 +127,7 @@ NNODES=4 NODE_RANK=0 MASTER_ADDR=10.0.0.1 NUM_GPUS=8 \
 ./scripts/train_rcm.sh
 ```
 
-Stage 1 checkpoints are saved as:
+Distillation checkpoints are saved as:
 
 ```text
 <output_path>/<run_dir>/checkpoints/checkpoint_XXXXXX/model.pth
@@ -135,7 +135,7 @@ Stage 1 checkpoints are saved as:
 
 ## Kept Scripts
 
-Only Stage 1 distillation scripts are kept in `LTX-2/packages/ltx-distillation/scripts/`:
+Only distillation scripts are kept in `LTX-2/packages/ltx-distillation/scripts/`:
 
 ```text
 train_bidirectional.sh
@@ -144,8 +144,6 @@ train_scm.sh
 train_dmd.sh
 train_rcm.sh
 train_scm_dmd.sh
-train_stage1_bidirectional_dmd.sh
-train_stage1_bidirectional_rcm.sh
 ```
 
 ## Repository Structure

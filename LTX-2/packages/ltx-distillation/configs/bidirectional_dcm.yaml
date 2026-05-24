@@ -1,5 +1,5 @@
 # =============================================================================
-# Stage 1: Bidirectional DCM-only Debug
+# Bidirectional DCM-only Distillation
 # =============================================================================
 # Runs only the discrete-time consistency branch:
 # - no DMD rollout / no critic update / no SCM JVP
@@ -97,7 +97,7 @@ checkpoint_iters: 500
 
 wandb_project: turbo-t2av
 wandb_entity: liuyuxiang1021-tianjin-university
-wandb_name: stage1_bidirectional_dcm
+wandb_name: bidirectional_dcm
 
 seed: 42
 

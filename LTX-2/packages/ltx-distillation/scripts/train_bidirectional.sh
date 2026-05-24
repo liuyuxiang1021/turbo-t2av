@@ -40,20 +40,20 @@ fi
 
 case "${MODE}" in
     dcm)
-        DEFAULT_CONFIG="configs/stage1_bidirectional_dcm.yaml"
+        DEFAULT_CONFIG="configs/bidirectional_dcm.yaml"
         TITLE="Bidirectional DCM Warmup"
         ;;
     scm)
-        DEFAULT_CONFIG="configs/stage1_bidirectional_scm.yaml"
+        DEFAULT_CONFIG="configs/bidirectional_scm.yaml"
         TITLE="Bidirectional SCM"
         ;;
     dmd)
-        DEFAULT_CONFIG="configs/stage1_bidirectional_dmd.yaml"
+        DEFAULT_CONFIG="configs/bidirectional_dmd.yaml"
         TITLE="Bidirectional DMD"
         ;;
     rcm|scm_dmd|scm+dmd)
         MODE="rcm"
-        DEFAULT_CONFIG="configs/stage1_bidirectional_rcm.yaml"
+        DEFAULT_CONFIG="configs/bidirectional_rcm.yaml"
         TITLE="Bidirectional rCM (SCM + DMD)"
         ;;
     *)
