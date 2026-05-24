@@ -12,11 +12,12 @@ Modes:
   dcm       DCM warmup only
   scm       SCM only
   dmd       DMD only
-  scm_dmd   joint SCM + DMD
+  rcm       rCM-style joint SCM + DMD
+  scm_dmd   alias for rcm
 
 Warmup:
   Set DCM_CHECKPOINT=/path/to/dcm/checkpoint/model.pth to initialize scm, dmd,
-  or scm_dmd from a DCM checkpoint without loading optimizer/scheduler state.
+  or rcm from a DCM checkpoint without loading optimizer/scheduler state.
 
 Distributed environment:
   NPROC_PER_NODE or NUM_GPUS, NNODES, NODE_RANK, MASTER_ADDR, MASTER_PORT.
@@ -50,9 +51,10 @@ case "${MODE}" in
         DEFAULT_CONFIG="configs/stage1_bidirectional_dmd.yaml"
         TITLE="Bidirectional DMD"
         ;;
-    scm_dmd|scm+dmd)
-        DEFAULT_CONFIG="configs/stage1_bidirectional_scm_dmd.yaml"
-        TITLE="Bidirectional SCM + DMD"
+    rcm|scm_dmd|scm+dmd)
+        MODE="rcm"
+        DEFAULT_CONFIG="configs/stage1_bidirectional_rcm.yaml"
+        TITLE="Bidirectional rCM (SCM + DMD)"
         ;;
     *)
         echo "[error] unsupported mode: ${MODE}" >&2

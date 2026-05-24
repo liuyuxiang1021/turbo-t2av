@@ -8,7 +8,7 @@
 
 </div>
 
-**turbo-t2av** is a text-to-audio-video Stage 1 distillation project built around LTX-2 components. The current script surface is intentionally limited to bidirectional Stage 1 distillation: DCM warmup, SCM, DMD, and SCM+DMD.
+**turbo-t2av** is a text-to-audio-video Stage 1 distillation project built around LTX-2 components. The current script surface is intentionally limited to bidirectional Stage 1 distillation: DCM warmup, SCM, DMD, and rCM-style joint SCM+DMD.
 
 ## Setup
 
@@ -45,8 +45,8 @@ Stage 1 uses two data inputs:
 
 | Input | Config key | Used by |
 | --- | --- | --- |
-| Prompt text file, one prompt per line | `data_path` | DCM, DMD, SCM+DMD |
-| SCM latent LMDB/root | `scm_data_path` | SCM, SCM+DMD |
+| Prompt text file, one prompt per line | `data_path` | DCM, DMD, rCM |
+| SCM latent LMDB/root | `scm_data_path` | SCM, rCM |
 
 Before launching training, edit the selected config and point these fields to existing local data:
 
@@ -69,7 +69,9 @@ The unified launcher is `./scripts/train_bidirectional.sh`. The short wrapper sc
 | DCM warmup | `./scripts/train_dcm.sh` | `configs/stage1_bidirectional_dcm.yaml` |
 | SCM only | `./scripts/train_scm.sh` | `configs/stage1_bidirectional_scm.yaml` |
 | DMD only | `./scripts/train_dmd.sh` | `configs/stage1_bidirectional_dmd.yaml` |
-| SCM + DMD | `./scripts/train_scm_dmd.sh` | `configs/stage1_bidirectional_scm_dmd.yaml` |
+| rCM-style SCM + DMD | `./scripts/train_rcm.sh` | `configs/stage1_bidirectional_rcm.yaml` |
+
+`./scripts/train_scm_dmd.sh` is kept as a compatibility alias for `./scripts/train_rcm.sh`.
 
 Basic launch:
 
@@ -79,7 +81,7 @@ cd LTX-2/packages/ltx-distillation
 NUM_GPUS=8 MASTER_PORT=29500 ./scripts/train_dcm.sh
 NUM_GPUS=8 MASTER_PORT=29501 ./scripts/train_scm.sh
 NUM_GPUS=8 MASTER_PORT=29502 ./scripts/train_dmd.sh
-NUM_GPUS=8 MASTER_PORT=29503 ./scripts/train_scm_dmd.sh
+NUM_GPUS=8 MASTER_PORT=29503 ./scripts/train_rcm.sh
 ```
 
 You can also pass an explicit config:
@@ -91,7 +93,7 @@ NUM_GPUS=8 MASTER_PORT=29510 \
 
 ## DCM As Warmup
 
-SCM, DMD, and SCM+DMD can all start from a DCM checkpoint. Treat DCM as the warmup stage and pass the DCM checkpoint through `DCM_CHECKPOINT`.
+SCM, DMD, and rCM can all start from a DCM checkpoint. Treat DCM as the warmup stage and pass the DCM checkpoint through `DCM_CHECKPOINT`.
 
 The launcher injects these config values into a temporary YAML:
 
@@ -115,14 +117,14 @@ NUM_GPUS=8 MASTER_PORT=29602 \
 
 DCM_CHECKPOINT=/path/to/dcm_run/checkpoints/checkpoint_001000/model.pth \
 NUM_GPUS=8 MASTER_PORT=29603 \
-./scripts/train_scm_dmd.sh
+./scripts/train_rcm.sh
 ```
 
 For multi-node jobs, set the same launcher variables used by `torchrun`:
 
 ```bash
 NNODES=4 NODE_RANK=0 MASTER_ADDR=10.0.0.1 NUM_GPUS=8 \
-./scripts/train_scm_dmd.sh
+./scripts/train_rcm.sh
 ```
 
 Stage 1 checkpoints are saved as:
@@ -140,6 +142,7 @@ train_bidirectional.sh
 train_dcm.sh
 train_scm.sh
 train_dmd.sh
+train_rcm.sh
 train_scm_dmd.sh
 train_stage1_bidirectional_dmd.sh
 train_stage1_bidirectional_rcm.sh
