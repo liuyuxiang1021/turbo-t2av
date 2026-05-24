@@ -1,5 +1,5 @@
 checkpoint_path: /data/datasets/turbodiff_datasets_and_ckpt/omniforcing/ltx-2-19b-dev.safetensors
-resume_checkpoint: /data/datasets/turbodiff_datasets_and_ckpt/my_omniforcing/0520_011955_scm_from_dcm_warmup/checkpoints/checkpoint_001000/model.pth
+resume_checkpoint: /data/datasets/turbodiff_datasets_and_ckpt/my_omniforcing/0523_235247_scm_dmd_sum_scm100_dmd1_to2051_from_1000_reverse_scm_sharedbatch/checkpoints/checkpoint_002051/model.pth
 checkpoint_load_mode: parallel
 resume_training_state: false
 gemma_path: /data/datasets/turbodiff_datasets_and_ckpt/omniforcing/gemma-3-12b-it-qat-q4_0-unquantized
@@ -110,7 +110,7 @@ student_benchmark_use_cfg: false
 benchmark_num_prompts: 8
 wandb_project: OmniForcing
 wandb_entity: liuyuxiang1021-tianjin-university
-wandb_name: scm_dmd_sum_scm10_dmd1_after2051_from_1000_reverse_scm_sharedbatch
+wandb_name: scm_dmd_sum_scm10_dmd1_from_scm100_step2051_reverse_scm_sharedbatch
 wandb_api_key: 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
 seed: 42
 no_visualize: false
