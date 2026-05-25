@@ -6,6 +6,24 @@
 
 </div>
 
+## Overview
+
+TurboT2AV is a distillation workspace for audio-conditioned text-to-video generation based on LTX-2. It focuses on:
+
+- Distilling an audio-conditioned text-to-video teacher into a faster student model.
+- Keeping the maintained training path centered on DCM, SCM, DMD, and rCM-style SCM+DMD training.
+- Using DCM as a 500-step warmup before SCM-only training to step 1000, then continuing with the full rCM-style objective.
+- Supporting standalone DCM, SCM, and DMD launchers for debugging and ablation runs.
+- Providing a single-GPU inference entrypoint for checking trained checkpoints with prompt files.
+
+At a high level, the workflow is:
+
+1. Set up the Pixi environment and install the local LTX packages.
+2. Download the LTX-2 and Gemma assets, then prepare `prompts.txt` and the SCM latent LMDB from the video dataset.
+3. Edit the YAML configs with the local asset, data, output, and optional WandB settings.
+4. Start the default distillation recipe or one of the standalone training modes.
+5. Run single-GPU inference from the maintained LTX-2 inference script.
+
 <table>
   <thead>
     <tr>
@@ -57,20 +75,6 @@
     </tr>
   </tbody>
 </table>
-
-## Overview
-
-TurboT2AV is a distillation workspace for audio-conditioned text-to-video generation based on LTX-2. The repository keeps the current training and inference path focused on a faster student model while retaining the teacher checkpoints, latent data format, and launch scripts needed to reproduce the distillation runs.
-
-The maintained training recipe uses DCM as a short 500-step warmup, continues with SCM-only training to step 1000, and then runs the full rCM-style objective with SCM and DMD together. Standalone DCM, SCM, and DMD launchers are also kept for debugging and ablation runs.
-
-At a high level, the workflow is:
-
-1. Set up the Pixi environment and install the local LTX packages.
-2. Download the LTX-2 and Gemma assets, then prepare `prompts.txt` and the SCM latent LMDB from the video dataset.
-3. Edit the YAML configs with the local asset, data, output, and optional WandB settings.
-4. Start the default distillation recipe or one of the standalone training modes.
-5. Run single-GPU inference from the maintained LTX-2 inference script.
 
 ## 1. Set Up The Environment
 
