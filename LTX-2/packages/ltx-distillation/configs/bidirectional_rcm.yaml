@@ -61,6 +61,8 @@ scm_time_eps: 1.0e-4
 mixed_precision: true
 gradient_checkpointing: true
 batch_size: 1
+checkpoint_iters: 1000
+skip_initial_checkpoint: true
 
 lr: 2.0e-05
 generator_lr: 2.0e-05
