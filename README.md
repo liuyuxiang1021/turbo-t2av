@@ -6,56 +6,67 @@
 
 </div>
 
-**TurboT2AV** is a text-to-audio-video distillation project built around LTX-2 components. The current script surface is intentionally limited to bidirectional distillation: DCM warmup, SCM, DMD, and rCM-style joint SCM+DMD.
+**TurboT2AV** is a text-to-audio-video distillation project built around LTX-2 components. The maintained workflow is bidirectional distillation: DCM warmup, SCM, DMD, and rCM-style joint SCM+DMD.
 
-## Setup
+## 1. Set Up The Environment
+
+Clone the repo and enter the LTX-2 workspace:
 
 ```bash
 git clone https://github.com/liuyuxiang1021/TurboT2AV.git
 cd TurboT2AV/LTX-2
+```
 
-# Recommended when uv/pixi is available.
+Use the project environment when `uv` or `pixi` is available:
+
+```bash
 uv sync
+```
 
-# Or install the local packages into an existing Python environment.
+Or install the local packages into an existing Python environment:
+
+```bash
 pip install -e packages/ltx-core
 pip install -e packages/ltx-pipelines
 pip install -e packages/ltx-causal
 pip install -e packages/ltx-distillation
 ```
 
-Download the base assets and update the paths in the YAML files under `LTX-2/packages/ltx-distillation/configs/`:
-
-| Asset | Default config key |
-| --- | --- |
-| `ltx-2-19b-dev.safetensors` | `checkpoint_path` |
-| `gemma-3-12b-it-qat-q4_0-unquantized` | `gemma_path` |
-
-The config directory keeps the default bidirectional distillation recipes:
-
-```text
-bidirectional_dcm.yaml
-bidirectional_scm.yaml
-bidirectional_dmd.yaml
-bidirectional_rcm.yaml
-```
-
-WandB credentials should be passed through the environment, not committed into configs:
+Set WandB credentials through the environment instead of committing them into YAML files:
 
 ```bash
 export WANDB_API_KEY=...
 ```
 
-## Distillation Data
+## 2. Download Weights And Prepare Data
 
-The distillation recipes use two data inputs:
+Download the base assets and keep their paths available for the config files:
+
+| Asset | Config key |
+| --- | --- |
+| `ltx-2-19b-dev.safetensors` | `checkpoint_path` |
+| `gemma-3-12b-it-qat-q4_0-unquantized` | `gemma_path` |
+
+Prepare the distillation data:
 
 | Input | Config key | Used by |
 | --- | --- | --- |
 | Prompt text file, one prompt per line | `data_path` | DCM, DMD, rCM |
 | SCM latent LMDB/root | `scm_data_path` | SCM, rCM |
 
-Before launching training, edit the selected config and point these fields to existing local data:
+The config directory intentionally keeps only the default bidirectional recipes:
+
+```text
+LTX-2/packages/ltx-distillation/configs/
+├── bidirectional_dcm.yaml
+├── bidirectional_scm.yaml
+├── bidirectional_dmd.yaml
+└── bidirectional_rcm.yaml
+```
+
+## 3. Edit The Configs
+
+Before training, update the selected YAML under `LTX-2/packages/ltx-distillation/configs/`:
 
 ```yaml
 checkpoint_path: /path/to/ltx-2-19b-dev.safetensors
@@ -65,9 +76,22 @@ scm_data_path: /path/to/scm_latent_lmdb_or_root
 output_path: /path/to/outputs
 ```
 
-## Distillation Training
+Use these four configs for the standard modes:
 
-Run commands from `LTX-2/packages/ltx-distillation`.
+| Mode | Config |
+| --- | --- |
+| DCM warmup | `configs/bidirectional_dcm.yaml` |
+| SCM only | `configs/bidirectional_scm.yaml` |
+| DMD only | `configs/bidirectional_dmd.yaml` |
+| rCM-style SCM + DMD | `configs/bidirectional_rcm.yaml` |
+
+## 4. Start Training
+
+Run training commands from `LTX-2/packages/ltx-distillation`:
+
+```bash
+cd LTX-2/packages/ltx-distillation
+```
 
 The default recipe is:
 
@@ -80,17 +104,7 @@ In practice, starting SCM directly from the base model can be unstable during th
 Launch the default recipe:
 
 ```bash
-cd LTX-2/packages/ltx-distillation
-
 NUM_GPUS=8 MASTER_PORT=29500 ./scripts/train_default_distillation.sh
-```
-
-The default recipe writes deterministic phase run directories under `output_path`:
-
-```text
-<prefix>_dcm500_warmup/checkpoints/checkpoint_000500/model.pth
-<prefix>_scm1000_from_dcm500/checkpoints/checkpoint_001000/model.pth
-<prefix>_rcm_from_scm1000/
 ```
 
 Useful overrides:
@@ -102,18 +116,15 @@ NUM_GPUS=8 MASTER_PORT=29500 \
 ./scripts/train_default_distillation.sh
 ```
 
-The unified launcher is `./scripts/train_bidirectional.sh`. The short wrapper scripts call the same launcher:
+The default recipe writes phase run directories under `output_path`:
 
-| Mode | Wrapper |
-| --- | --- |
-| DCM warmup | `./scripts/train_dcm.sh` |
-| SCM only | `./scripts/train_scm.sh` |
-| DMD only | `./scripts/train_dmd.sh` |
-| rCM-style SCM + DMD | `./scripts/train_rcm.sh` |
+```text
+<prefix>_dcm500_warmup/checkpoints/checkpoint_000500/model.pth
+<prefix>_scm1000_from_dcm500/checkpoints/checkpoint_001000/model.pth
+<prefix>_rcm_from_scm1000/
+```
 
-`./scripts/train_scm_dmd.sh` is kept as a compatibility alias for `./scripts/train_rcm.sh`.
-
-Standalone launch:
+Standalone mode commands are also available:
 
 ```bash
 NUM_GPUS=8 MASTER_PORT=29500 ./scripts/train_dcm.sh
@@ -122,21 +133,17 @@ NUM_GPUS=8 MASTER_PORT=29502 ./scripts/train_dmd.sh
 NUM_GPUS=8 MASTER_PORT=29503 ./scripts/train_rcm.sh
 ```
 
-You can also pass an explicit config:
+To pass a specific config:
 
 ```bash
 NUM_GPUS=8 MASTER_PORT=29510 \
 ./scripts/train_bidirectional.sh scm /path/to/config.yaml
 ```
 
-## Warmup And Resume
-
-SCM, DMD, and rCM can all start from an earlier checkpoint. Pass it through `INIT_CHECKPOINT`, `WARMUP_CHECKPOINT`, or `DCM_CHECKPOINT`.
-
-The launcher injects these config values into a temporary YAML:
+SCM, DMD, and rCM can start from an earlier checkpoint by setting `INIT_CHECKPOINT`, `WARMUP_CHECKPOINT`, or `DCM_CHECKPOINT`. The launcher writes a temporary config with:
 
 ```yaml
-resume_checkpoint: <DCM_CHECKPOINT>
+resume_checkpoint: <CHECKPOINT>
 checkpoint_load_mode: parallel
 resume_training_state: false
 skip_initial_checkpoint: true
@@ -149,34 +156,37 @@ DCM_CHECKPOINT=/path/to/dcm500_warmup/checkpoints/checkpoint_000500/model.pth \
 NUM_GPUS=8 MASTER_PORT=29601 \
 ./scripts/train_scm.sh
 
-DCM_CHECKPOINT=/path/to/dcm500_warmup/checkpoints/checkpoint_000500/model.pth \
-NUM_GPUS=8 MASTER_PORT=29602 \
-./scripts/train_dmd.sh
-
 WARMUP_CHECKPOINT=/path/to/scm1000_from_dcm500/checkpoints/checkpoint_001000/model.pth \
 NUM_GPUS=8 MASTER_PORT=29603 \
 ./scripts/train_rcm.sh
 ```
 
-For multi-node jobs, set the same launcher variables used by `torchrun`:
+For multi-node jobs, use the same variables accepted by `torchrun`:
 
 ```bash
 NNODES=4 NODE_RANK=0 MASTER_ADDR=10.0.0.1 NUM_GPUS=8 \
 ./scripts/train_rcm.sh
 ```
 
-Distillation checkpoints are saved as:
+## 5. Run Inference
+
+Single-GPU inference is kept in the original project layout:
 
 ```text
-<output_path>/<run_dir>/checkpoints/checkpoint_XXXXXX/model.pth
+LTX-2/scripts/run_inference_single_gpu.sh
 ```
 
-## Single-GPU Inference
-
-The single-GPU inference launcher is kept under `LTX-2/scripts/`, matching the original project layout. It sequentially evaluates the default comparison checkpoints on one GPU.
+The default command sequentially evaluates the default comparison checkpoints on one GPU:
 
 ```bash
 bash LTX-2/scripts/run_inference_single_gpu.sh 0 200
+```
+
+Arguments:
+
+```text
+0    GPU id
+200  number of prompts
 ```
 
 Useful overrides:
@@ -189,11 +199,15 @@ PROMPTS_FILE=/path/to/prompts.txt \
 bash LTX-2/scripts/run_inference_single_gpu.sh 0 200
 ```
 
-Each model writes `sample_*.mp4`, `sample_*.json`, `samples.csv`, and `run.log` under `OUTPUT_ROOT/<index>_<name>/`. Separate `sample_*.wav` files are removed after the MP4 is written.
+Each model writes `sample_*.mp4`, `sample_*.json`, `samples.csv`, and `run.log` under `OUTPUT_ROOT/<index>_<name>/`. Separate `sample_*.wav` files are removed after MP4 writing.
 
-## Kept Scripts
+## 6. Run Evaluation
 
-Only distillation entrypoints are kept in `LTX-2/packages/ltx-distillation/scripts/`:
+TBA. The repository currently keeps training and single-GPU inference entrypoints. A formal evaluation script and metric workflow still need to be added.
+
+## Script Reference
+
+Distillation entrypoints live in `LTX-2/packages/ltx-distillation/scripts/`:
 
 ```text
 train_bidirectional.sh
@@ -205,7 +219,11 @@ train_rcm.sh
 train_scm_dmd.sh
 ```
 
-Single-GPU inference is kept in `LTX-2/scripts/run_inference_single_gpu.sh`.
+Single-GPU inference lives in:
+
+```text
+LTX-2/scripts/run_inference_single_gpu.sh
+```
 
 ## Repository Structure
 
