@@ -107,12 +107,54 @@ Download the base assets and keep their paths available for the config files:
 | `ltx-2-19b-dev.safetensors` | `checkpoint_path` |
 | `gemma-3-12b-it-qat-q4_0-unquantized` | `gemma_path` |
 
-Prepare the distillation data from a processed video dataset:
+Prepare the distillation data:
+
+**prompts.txt** — one plain-text prompt per line:
+
+```text
+A dog barking in a park.
+A piano solo performance.
+A woman singing on stage.
+...
+```
+
+**SCM latent LMDB** — precomputed VAE latents for SCM/DCM training. Generate with the included tool:
+
+```bash
+# Option A: manifest JSONL (recommended — supports per-sample audio)
+python -m ltx_distillation.tools.create_scm_latent_lmdb \
+  --manifest_path /path/to/manifest.jsonl \
+  --checkpoint_path /path/to/ltx-2-19b-dev.safetensors \
+  --output_lmdb /path/to/scm_latent_lmdb \
+  --num_workers 8
+
+# Option B: captions file + video directory
+python -m ltx_distillation.tools.create_scm_latent_lmdb \
+  --captions_path /path/to/captions.txt \
+  --video_dir /path/to/videos/ \
+  --checkpoint_path /path/to/ltx-2-19b-dev.safetensors \
+  --output_lmdb /path/to/scm_latent_lmdb \
+  --num_workers 8
+```
+
+**Manifest JSONL format** — one JSON object per line:
+
+```jsonl
+{"prompt": "A dog barking", "video_path": "/abs/path/video.mp4"}
+{"prompt": "A piano solo", "video_path": "/abs/path/video.mp4", "audio_path": "/abs/path/audio.wav"}
+```
+
+**Captions file format** — `<filename> <prompt>`, one per line:
+
+```text
+video_001.mp4 A dog barking in a park
+video_002.mp4 A piano solo performance
+```
 
 | Input | Config key | Used by |
 | --- | --- | --- |
-| `/path/to/dataset/prompts.txt` | `data_path` | prompt text loaded by training and inference |
-| `/path/to/scm_latent_lmdb` | `scm_data_path` | precomputed SCM latents used by distillation |
+| `/path/to/dataset/prompts.txt` | `data_path` | prompts for training and inference |
+| `/path/to/scm_latent_lmdb` | `scm_data_path` | precomputed SCM latents (required for DCM/SCM/DCM) |
 
 ## 3. Edit The Configs
 
