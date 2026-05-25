@@ -129,9 +129,9 @@ def _normalize_entry_indices(entries: list[ManifestEntry]) -> list[ManifestEntry
     return normalized
 
 
-def _load_manifest(manifest_path: str, max_samples: int | None) -> list[ManifestEntry]:
+def _load_manifest(manifest_path: str, max_samples: int | None, video_dir: str | None = None) -> list[ManifestEntry]:
     manifest_file = Path(manifest_path).expanduser().resolve()
-    manifest_dir = manifest_file.parent
+    manifest_dir = Path(video_dir).expanduser().resolve() if video_dir else manifest_file.parent
     suffix = manifest_file.suffix.lower()
 
     entries: list[ManifestEntry] = []
@@ -970,20 +970,7 @@ def main() -> None:
         raise RuntimeError("CUDA device requested but not available.")
 
     dtype = _parse_dtype(args.dtype)
-    entries = _load_manifest(args.mapping_csv, args.max_samples)
-    video_dir = Path(args.video_dir).expanduser().resolve()
-    resolved = []
-    for e in entries:
-        if not Path(e.video_path).is_absolute():
-            e = ManifestEntry(
-                prompt=e.prompt,
-                video_path=str(video_dir / e.video_path),
-                audio_path=e.audio_path,
-                source_index=e.source_index,
-                video_name=e.video_name or Path(e.video_path).name,
-            )
-        resolved.append(e)
-    entries = resolved
+    entries = _load_manifest(args.mapping_csv, args.max_samples, args.video_dir)
     entries = _filter_entries_by_source_index(entries, args.source_index_start, args.source_index_end)
     entries = _select_shard_entries(entries, args.num_shards, args.shard_id)
     output_lmdb_path = _resolve_output_lmdb_path(args.output_lmdb, args.num_shards, args.shard_id)
