@@ -121,34 +121,20 @@ A woman singing on stage.
 **SCM latent LMDB** — precomputed VAE latents for SCM/DCM training. Generate with the included tool:
 
 ```bash
-# Option A: manifest JSONL (recommended — supports per-sample audio)
 python -m ltx_distillation.tools.create_scm_latent_lmdb \
-  --manifest_path /path/to/manifest.jsonl \
-  --checkpoint_path /path/to/ltx-2-19b-dev.safetensors \
-  --output_lmdb /path/to/scm_latent_lmdb \
-  --num_workers 8
-
-# Option B: captions file + video directory
-python -m ltx_distillation.tools.create_scm_latent_lmdb \
-  --captions_path /path/to/captions.txt \
+  --mapping_csv /path/to/mapping.csv \
   --video_dir /path/to/videos/ \
   --checkpoint_path /path/to/ltx-2-19b-dev.safetensors \
   --output_lmdb /path/to/scm_latent_lmdb \
   --num_workers 8
 ```
 
-**Manifest JSONL format** — one JSON object per line:
+**mapping.csv format** — CSV with header `video_id,prompt`:
 
-```jsonl
-{"prompt": "A dog barking", "video_path": "/abs/path/video.mp4"}
-{"prompt": "A piano solo", "video_path": "/abs/path/video.mp4", "audio_path": "/abs/path/audio.wav"}
-```
-
-**Captions file format** — `<filename> <prompt>`, one per line:
-
-```text
-video_001.mp4 A dog barking in a park
-video_002.mp4 A piano solo performance
+```csv
+video_id,prompt
+001.mp4,"A dog barking in a park."
+002.mp4,"A piano solo performance."
 ```
 
 | Input | Config key | Used by |
