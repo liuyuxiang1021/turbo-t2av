@@ -100,12 +100,23 @@ pixi run pip install -e packages/ltx-distillation
 
 ## 2. Download Weights And Prepare Data
 
-Download the base assets and keep their paths available for the config files:
+Download the required model weights from HuggingFace:
 
-| Asset | Config key |
-| --- | --- |
-| `ltx-2-19b-dev.safetensors` | `checkpoint_path` |
-| `gemma-3-12b-it-qat-q4_0-unquantized` | `gemma_path` |
+| Asset | HF Repo | Config key |
+| --- | --- | --- |
+| `ltx-2-19b-dev.safetensors` | [`Lightricks/LTX-2`](https://huggingface.co/Lightricks/LTX-2) | `checkpoint_path` |
+| `gemma-3-12b-it-qat-q4_0-unquantized` | [`google/gemma-3-12b-it-qat-q4_0-unquantized`](https://huggingface.co/google/gemma-3-12b-it-qat-q4_0-unquantized) | `gemma_path` |
+
+```bash
+export HF_TOKEN="your_huggingface_token"
+
+huggingface-cli download Lightricks/LTX-2 \
+    ltx-2-19b-dev.safetensors \
+    --local-dir /path/to/checkpoints/LTX-2
+
+huggingface-cli download google/gemma-3-12b-it-qat-q4_0-unquantized \
+    --local-dir /path/to/checkpoints/gemma-3-12b-it-qat-q4_0-unquantized
+```
 
 Prepare the distillation data:
 
@@ -134,24 +145,19 @@ python -m ltx_distillation.tools.create_scm_latent_lmdb \
 
 ## 3. Edit The Configs
 
-Before training, update the selected YAML under `LTX-2/packages/ltx-distillation/configs/`:
+Before training, update `LTX-2/packages/ltx-distillation/configs/bidirectional_*.yaml`:
 
 ```yaml
 checkpoint_path: /path/to/ltx-2-19b-dev.safetensors
 gemma_path: /path/to/gemma-3-12b-it-qat-q4_0-unquantized
-data_path: /path/to/dataset/prompts.txt
+data_path: /path/to/prompts.txt           # generated from mapping.csv (see Section 2)
 scm_data_path: /path/to/scm_latent_lmdb
 output_path: /path/to/outputs
-wandb_api_key: ""  # optional; fill only when WandB login is needed
-```
 
-WandB logging is optional. If the machine is already logged in, leave `wandb_api_key` empty. If a run needs an explicit key, put it in the config you are launching, for example `LTX-2/packages/ltx-distillation/configs/bidirectional_rcm.yaml`:
-
-```yaml
-wandb_project: your_wandb_project
-wandb_entity: ""  # optional; leave empty for the default account/team
+# WandB (optional)
+wandb_project: your_project
 wandb_name: your_run_name
-wandb_api_key: ""  # optional; fill only when explicit login is needed
+wandb_api_key: ""      # leave empty if already logged in
 ```
 
 Use these configs for the maintained training entrypoints:
