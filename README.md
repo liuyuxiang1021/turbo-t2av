@@ -306,11 +306,3 @@ TurboT2AV/
             ├── scripts/
             └── src/ltx_distillation/
 ```
-
-## Acknowledgements
-
-TurboT2AV builds on:
-
-- [rCM](https://github.com/NVlabs/rcm)
-- [OmniForcing](https://github.com/OmniForcing/OmniForcing)
-- [LTX-2](https://github.com/Lightricks/LTX-2)
