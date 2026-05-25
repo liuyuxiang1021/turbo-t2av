@@ -117,7 +117,7 @@ mkdir -p "${OUTPUT_DIR}"
 
 if [[ -z "${INIT_LOCK_PATH}" ]]; then
     lock_key="$(printf '%s\0%s' "$(readlink -f "${CHECKPOINT_PATH}")" "$(readlink -f "${CONFIG_PATH}")" | sha256sum | awk '{print $1}' | cut -c1-16)"
-    INIT_LOCK_PATH="/tmp/turbot2av_av_eval_init_${lock_key}.lock"
+    INIT_LOCK_PATH="/tmp/TurboT2AV_av_eval_init_${lock_key}.lock"
 fi
 
 export PYTHONPATH="${DISTILLATION_ROOT}/src:${REPO_ROOT}/LTX-2/packages/ltx-causal/src:${REPO_ROOT}/LTX-2/packages/ltx-core/src:${REPO_ROOT}/LTX-2/packages/ltx-pipelines/src${PYTHONPATH:+:${PYTHONPATH}}"
