@@ -58,6 +58,19 @@
   </tbody>
 </table>
 
+## Overview
+
+TurboT2AV is a distillation workspace for audio-conditioned text-to-video generation based on LTX-2. The repository keeps the current training and inference path focused on a faster student model while retaining the teacher checkpoints, latent data format, and launch scripts needed to reproduce the distillation runs.
+
+The maintained training recipe uses DCM as a short 500-step warmup, continues with SCM-only training to step 1000, and then runs the full rCM-style objective with SCM and DMD together. Standalone DCM, SCM, and DMD launchers are also kept for debugging and ablation runs.
+
+At a high level, the workflow is:
+
+1. Set up the Pixi environment and install the local LTX packages.
+2. Download the LTX-2 and Gemma assets, then prepare `prompts.txt` and the SCM latent LMDB from the video dataset.
+3. Edit the YAML configs with the local asset, data, output, and optional WandB settings.
+4. Start the default distillation recipe or one of the standalone training modes.
+5. Run single-GPU inference from the maintained LTX-2 inference script.
 
 ## 1. Set Up The Environment
 
@@ -96,6 +109,9 @@ Prepare the distillation data from a processed video dataset:
 
 | Input | Config key | Used by |
 | --- | --- | --- |
+| `/path/to/dataset/prompts.txt` | `data_path` | prompt text loaded by training and inference |
+| `/path/to/scm_latent_lmdb` | `scm_data_path` | precomputed SCM latents used by distillation |
+
 ## 3. Edit The Configs
 
 Before training, update the selected YAML under `LTX-2/packages/ltx-distillation/configs/`:
