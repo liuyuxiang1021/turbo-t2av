@@ -2,8 +2,6 @@
 
 # TurboT2AV
 
-**TURBO TEXT-TO-AUDIO-VIDEO GENERATION**
-
 </div>
 
 ## Overview
