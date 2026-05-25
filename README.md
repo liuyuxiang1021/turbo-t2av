@@ -5,17 +5,18 @@
 <a href="https://github.com/liuyuxiang1021/TurboT2AV"><img src="https://img.shields.io/badge/GitHub-TurboT2AV-blue.svg" alt="GitHub"></a>
 
 </div>
-
-| Prompt | Teacher (50-step) | SCM+DMD (4-step) |
+| Prompt |   |   |
 |:---|:---:|:---:|
-| The woman with long brown hair and wearing white pants and a white jacket is performing on stage, singing into a microphone. As she sings, her voice is accompanied by background music, showcasing her talent as a female vocalist. | <video src="https://github.com/user-attachments/assets/45db5c23-fbaa-4c71-bc51-c1785a6c87eb" width="320" height="180" controls></video> | <video src="https://github.com/user-attachments/assets/30784eb1-634a-4eee-a718-3961f7077e72" width="320" height="180" controls></video> |
-| The man is seen sitting and playing an acoustic guitar in front of a green shirt hanging on a white wall, the sound of the guitar being strummed and finger-picked with various chords and melodies fills the air. | <video src="https://github.com/user-attachments/assets/03c7ceb9-a557-40ef-a8c9-984f790ae893" width="320" height="180" controls></video> | <video src="https://github.com/user-attachments/assets/408dcc48-8c83-42ee-8008-fd362d2b752d" width="320" height="180" controls></video> |
-| As the man speaks, the soothing sound of birds flapping their wings fills the background. In the video, a close-up of an animal surrounded by lush, green grass in a peaceful field is shown. The animal appears calm and observes its natural surroundings, creating a serene and tranquil scene. | <video src="https://github.com/user-attachments/assets/abfcc196-530b-472d-99a0-0f1c1c9126e6" width="320" height="180" controls></video> | <video src="https://github.com/user-attachments/assets/f85d4bd0-c25e-4a21-a6ef-8dc7d3bc113e" width="320" height="180" controls></video> |
-| Pigeons are cooing and flapping their wings while the wind blows and traffic passes by. In the video, a flock of white and black pigeons can be seen standing closely together. The pigeons appear calm and seem to be pecking at the ground for food. The birds vary in color, with some being predominantly white and others predominantly black. They are standing in a public area, possibly a park or square. The pigeons exhibit typical behaviors such as grooming themselves and fluttering their wings. Overall, the scene captures a peaceful coexistence between the white and black pigeons. | <video src="https://github.com/user-attachments/assets/0b3a7855-a4e8-484f-9f0c-6221d4306099" width="320" height="180" controls></video> | <video src="https://github.com/user-attachments/assets/159bdcd8-bcc4-443d-a495-5248934cf107" width="320" height="180" controls></video> |
-| The sound of a truck accelerating can be heard, along with the sound of its tires squealing as it speeds up. A man is seen standing next to a garbage truck parked in front of a house on a driveway. | <video src="https://github.com/user-attachments/assets/f9d8e1f4-d5a6-4c4e-b697-cf569e03b4b4" width="320" height="180" controls></video> | <video src="https://github.com/user-attachments/assets/4f30969c-b979-4981-80b4-b8244bf207e2" width="320" height="180" controls></video> |
-| The man wearing a camouflage shirt and hat sits in front of a sign as he speaks for a few minutes before a horn is blown, interrupting him. | <video src="https://github.com/user-attachments/assets/b5b4c3fc-b139-4fa4-ab25-d69f2c343e0c" width="320" height="180" controls></video> | <video src="https://github.com/user-attachments/assets/edaae47a-de4f-40cc-b469-b46bd78967d1" width="320" height="180" controls></video> |
-| As the woman speaks in the audio, the serene animation of a pool filled with clear and pristine blue water is displayed. The water flows gracefully out of the pool, creating gentle ripples on the surface, while the music plays in the background, adding to the tranquil atmosphere of the scene. | <video src="https://github.com/user-attachments/assets/d8a5d98c-53e7-4725-8c3e-d8c6caa34b43" width="320" height="180" controls></video> | <video src="https://github.com/user-attachments/assets/d319b7d9-f1d7-4cb9-ad20-b7ab53799321" width="320" height="180" controls></video> |
-| The speaker is a woman, wearing a pink top with a butterfly design on the chest, stands in front of a camera. | <video src="https://github.com/user-attachments/assets/621486c1-d56d-4be5-9a83-0f5baeaab3d1" width="320" height="180" controls></video> | <video src="https://github.com/user-attachments/assets/e98289ce-01ed-4a10-b5f0-4815b973a212" width="320" height="180" controls></video> |
+| The woman with long brown hair and wearing white pants and a white jacket is per... | <video src="https://github.com/user-attachments/assets/45db5c23-fbaa-4c71-bc51-c1785a6c87eb" controls></video> | <video src="https://github.com/user-attachments/assets/30784eb1-634a-4eee-a718-3961f7077e72" controls></video> |
+| | *Teacher* | *SCM+DMD* |
+| The man is seen sitting and playing an acoustic guitar in front of a green shirt... | <video src="https://github.com/user-attachments/assets/03c7ceb9-a557-40ef-a8c9-984f790ae893" controls></video> | <video src="https://github.com/user-attachments/assets/408dcc48-8c83-42ee-8008-fd362d2b752d" controls></video> |
+| As the man speaks, the soothing sound of birds flapping their wings fills the ba... | <video src="https://github.com/user-attachments/assets/abfcc196-530b-472d-99a0-0f1c1c9126e6" controls></video> | <video src="https://github.com/user-attachments/assets/f85d4bd0-c25e-4a21-a6ef-8dc7d3bc113e" controls></video> |
+| Pigeons are cooing and flapping their wings while the wind blows and traffic pas... | <video src="https://github.com/user-attachments/assets/0b3a7855-a4e8-484f-9f0c-6221d4306099" controls></video> | <video src="https://github.com/user-attachments/assets/159bdcd8-bcc4-443d-a495-5248934cf107" controls></video> |
+| The sound of a truck accelerating can be heard, along with the sound of its tire... | <video src="https://github.com/user-attachments/assets/f9d8e1f4-d5a6-4c4e-b697-cf569e03b4b4" controls></video> | <video src="https://github.com/user-attachments/assets/4f30969c-b979-4981-80b4-b8244bf207e2" controls></video> |
+| The man wearing a camouflage shirt and hat sits in front of a sign as he speaks ... | <video src="https://github.com/user-attachments/assets/b5b4c3fc-b139-4fa4-ab25-d69f2c343e0c" controls></video> | <video src="https://github.com/user-attachments/assets/edaae47a-de4f-40cc-b469-b46bd78967d1" controls></video> |
+| As the woman speaks in the audio, the serene animation of a pool filled with cle... | <video src="https://github.com/user-attachments/assets/d8a5d98c-53e7-4725-8c3e-d8c6caa34b43" controls></video> | <video src="https://github.com/user-attachments/assets/d319b7d9-f1d7-4cb9-ad20-b7ab53799321" controls></video> |
+| The speaker is a woman, wearing a pink top with a butterfly design on the chest,... | <video src="https://github.com/user-attachments/assets/621486c1-d56d-4be5-9a83-0f5baeaab3d1" controls></video> | <video src="https://github.com/user-attachments/assets/e98289ce-01ed-4a10-b5f0-4815b973a212" controls></video> |
+
 
 ## 1. Set Up The Environment
 
@@ -54,85 +55,6 @@ Prepare the distillation data from a processed video dataset:
 
 | Input | Config key | Used by |
 | --- | --- | --- |
-| Prompt text file, one prompt per line | `data_path` | DCM, DMD, rCM |
-| SCM latent LMDB/root | `scm_data_path` | SCM, rCM |
-
-### Convert Videos To SCM Latents
-
-SCM and rCM do not read raw videos directly during training. They read a latent LMDB generated from real video/audio samples. LMDB is a local key-value database; here it stores the pre-encoded video/audio latents and prompts so training can load them quickly.
-
-The CSV-based layout below is an example of the maintained input format. Replace `/path/to/dataset` with the local dataset directory.
-
-```text
-/path/to/dataset/
-├── mapping.csv
-└── videos/
-    ├── 001.mp4
-    ├── 002.mp4
-    └── ...
-```
-
-The pipeline is:
-
-```text
-dataset/mapping.csv + dataset/videos/*.mp4 -> manifest.jsonl + prompts.txt -> SCM latent LMDB
-```
-
-By default, `manifest.jsonl` and `prompts.txt` are written under `/path/to/dataset`.
-
-Build the manifest and prompt file:
-
-```bash
-cd LTX-2
-
-pixi run python -m ltx_distillation.tools.prepare_dataset \
-  --dataset_root /path/to/dataset
-```
-
-Then encode the videos/audio into SCM latents:
-
-```bash
-pixi run python -m ltx_distillation.tools.create_scm_latent_lmdb \
-  --manifest_path /path/to/dataset/manifest.jsonl \
-  --output_lmdb /path/to/scm_latent_lmdb \
-  --checkpoint_path /path/to/ltx-2-19b-dev.safetensors \
-  --num_frames 121 \
-  --video_height 512 \
-  --video_width 768 \
-  --video_fps 24 \
-  --device cuda \
-  --dtype bfloat16 \
-  --batch_size 1 \
-  --resume
-```
-
-Point the configs to the generated files:
-
-```yaml
-data_path: /path/to/dataset/prompts.txt
-scm_data_path: /path/to/scm_latent_lmdb
-```
-
-Optionally decode a few latent samples to verify the LMDB before training:
-
-```bash
-pixi run python -m ltx_distillation.tools.verify_scm_latent_decode \
-  --lmdb_root /path/to/scm_latent_lmdb \
-  --checkpoint_path /path/to/ltx-2-19b-dev.safetensors \
-  --output_dir /path/to/latent_decode_preview \
-  --num_samples 8
-```
-
-The config directory intentionally keeps only the default bidirectional recipes:
-
-```text
-LTX-2/packages/ltx-distillation/configs/
-├── bidirectional_dcm.yaml
-├── bidirectional_scm.yaml
-├── bidirectional_dmd.yaml
-└── bidirectional_rcm.yaml
-```
-
 ## 3. Edit The Configs
 
 Before training, update the selected YAML under `LTX-2/packages/ltx-distillation/configs/`:
