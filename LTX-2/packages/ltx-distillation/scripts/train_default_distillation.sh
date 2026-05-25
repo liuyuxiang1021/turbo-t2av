@@ -92,6 +92,36 @@ require_checkpoint() {
     fi
 }
 
+# Override config paths via env vars (set once, applies to all stages)
+patch_config() {
+    local src="$1"
+    local dst="$2"
+    "${PYTHON_BIN}" - "${src}" "${dst}" <<'PY'
+import sys
+from omegaconf import OmegaConf
+import os
+cfg = OmegaConf.load(sys.argv[1])
+for key, env in [
+    ("checkpoint_path", "TURBO_CHECKPOINT_PATH"),
+    ("gemma_path", "TURBO_GEMMA_PATH"),
+    ("data_path", "TURBO_DATA_PATH"),
+    ("scm_data_path", "TURBO_SCM_DATA_PATH"),
+    ("output_path", "TURBO_OUTPUT_PATH"),
+]:
+    if os.environ.get(env):
+        cfg[key] = os.environ[env]
+OmegaConf.save(cfg, sys.argv[2])
+PY
+}
+
+# Patch configs with env var paths
+for cfg_var in DCM_CONFIG SCM_CONFIG RCM_CONFIG; do
+    src="${!cfg_var}"
+    patched="/tmp/turbot2av_${cfg_var}_$(date +%s).yaml"
+    patch_config "${src}" "${patched}"
+    eval "${cfg_var}=${patched}"
+done
+
 run_stage() {
     local label="$1"
     shift

@@ -39,13 +39,21 @@ class TextDataset(Dataset):
         data_path: str,
         max_samples: Optional[int] = None,
     ) -> List[str]:
-        """Load prompts from file."""
+        """Load prompts from file (.txt or .csv)."""
+        import csv
         if not os.path.exists(data_path):
             raise FileNotFoundError(f"Data file not found: {data_path}")
 
         with open(data_path, "r", encoding="utf-8") as f:
-            prompts = [line.strip() for line in f if line.strip()]
+            first = f.readline().strip()
+            f.seek(0)
+            if data_path.endswith(".csv") or ("," in first and "video_id" in first):
+                prompts = [row.get("prompt", row.get("caption", "")).strip()
+                          for row in csv.DictReader(f) if row]
+            else:
+                prompts = [line.strip() for line in f if line.strip()]
 
+        prompts = [p for p in prompts if p]
         if max_samples is not None:
             prompts = prompts[:max_samples]
 
