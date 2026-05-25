@@ -206,7 +206,7 @@ PYTHONPATH=packages/ltx-distillation/src:$PYTHONPATH \
   --num_prompts 8
 ```
 
-Outputs `sample_*.mp4` per prompt. For batch evaluation, use `LTX-2/scripts/run_inference_single_gpu.sh`.
+Outputs `sample_*.mp4` per prompt.
 
 ## 5. Run Evaluation
 
