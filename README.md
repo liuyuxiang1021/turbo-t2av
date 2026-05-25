@@ -143,64 +143,28 @@ python -m ltx_distillation.tools.create_scm_latent_lmdb \
   --num_workers 8
 ```
 
-## 3. Edit The Configs
+## 3. Start Training
 
-Before training, update `LTX-2/packages/ltx-distillation/configs/bidirectional_*.yaml`:
+Set paths once via environment variables — no need to edit YAML files:
 
-```yaml
-checkpoint_path: /path/to/ltx-2-19b-dev.safetensors
-gemma_path: /path/to/gemma-3-12b-it-qat-q4_0-unquantized
-data_path: /path/to/prompts.txt           # generated from mapping.csv (see Section 2)
-scm_data_path: /path/to/scm_latent_lmdb
-output_path: /path/to/outputs
-
-# WandB (optional)
-wandb_project: your_project
-wandb_name: your_run_name
-wandb_api_key: ""      # leave empty if already logged in
+```bash
+export TURBO_CHECKPOINT_PATH=/path/to/ltx-2-19b-dev.safetensors
+export TURBO_GEMMA_PATH=/path/to/gemma-3-12b-it-qat-q4_0-unquantized
+export TURBO_DATA_PATH=/path/to/mapping.csv              # same CSV from Section 2
+export TURBO_SCM_DATA_PATH=/path/to/scm_latent_lmdb
+export TURBO_OUTPUT_PATH=/path/to/outputs
 ```
 
-Use these configs for the maintained training entrypoints:
-
-| Mode | Config |
-| --- | --- |
-| Full default recipe | `configs/bidirectional_dcm.yaml`, `configs/bidirectional_scm.yaml`, `configs/bidirectional_rcm.yaml` |
-| DCM warmup | `configs/bidirectional_dcm.yaml` |
-| SCM only | `configs/bidirectional_scm.yaml` |
-| DMD only | `configs/bidirectional_dmd.yaml` |
-
-## 4. Start Training
-
-Run training commands from `LTX-2/packages/ltx-distillation`:
+The default recipe is **DCM 500-step warmup → SCM-only to step 1000 → full rCM training**:
 
 ```bash
 cd LTX-2/packages/ltx-distillation
-```
-
-The default recipe is:
-
-```text
-DCM 500-step warmup -> SCM-only training to step 1000 -> full rCM training
-```
-
-In practice, starting SCM directly from the base model can be unstable during the early steps. The project default therefore first runs DCM for 500 steps as a discrete consistency warmup, then switches to SCM-only training until `checkpoint_001000`, and then initializes the full rCM run from that SCM checkpoint.
-
-Launch the default recipe:
-
-```bash
 NUM_GPUS=8 MASTER_PORT=29500 ./scripts/train_default_distillation.sh
 ```
 
-Useful overrides:
+Starting SCM directly from the base model can be unstable. The default therefore runs DCM for 500 steps as discrete consistency warmup, then SCM-only to step 1000, then rCM from that checkpoint.
 
-```bash
-OUTPUT_PATH=/path/to/outputs \
-PIPELINE_RUN_PREFIX=0524_TurboT2AV \
-NUM_GPUS=8 MASTER_PORT=29500 \
-./scripts/train_default_distillation.sh
-```
-
-The default recipe writes phase run directories under `output_path`:
+The recipe produces three checkpoint directories under `output_path`:
 
 ```text
 <prefix>_dcm500_warmup/checkpoints/checkpoint_000500/model.pth
@@ -244,7 +208,7 @@ NUM_GPUS=8 MASTER_PORT=29602 \
 ./scripts/train_dmd.sh
 ```
 
-## 5. Run Inference
+## 4. Run Inference
 
 Single-GPU inference is kept in the original project layout:
 
@@ -277,7 +241,7 @@ bash LTX-2/scripts/run_inference_single_gpu.sh 0 200
 
 Each model writes `sample_*.mp4`, `sample_*.json`, `samples.csv`, and `run.log` under `OUTPUT_ROOT/<index>_<name>/`. Separate `sample_*.wav` files are removed after MP4 writing.
 
-## 6. Run Evaluation
+## 5. Run Evaluation
 
 TBA. The repository currently keeps training and single-GPU inference entrypoints. A formal evaluation script and metric workflow still need to be added.
 
