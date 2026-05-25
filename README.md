@@ -48,6 +48,114 @@ Prepare the distillation data:
 | Prompt text file, one prompt per line | `data_path` | DCM, DMD, rCM |
 | SCM latent LMDB/root | `scm_data_path` | SCM, rCM |
 
+### Convert Videos To SCM Latents
+
+SCM and rCM do not read raw videos directly during training. They read a latent LMDB generated from real video/audio samples. The pipeline is:
+
+```text
+videos + captions -> manifest.jsonl -> SCM latent LMDB -> scm_data_path
+```
+
+The raw data can be provided in either format:
+
+```text
+captions.txt + video_dir/
+```
+
+where each caption line is:
+
+```text
+clip_name.mp4 A caption or prompt for this clip
+```
+
+or as a manifest JSONL:
+
+```json
+{"prompt": "A caption or prompt for this clip", "video_path": "/abs/path/clip_name.mp4"}
+```
+
+If you start from `captions.txt` and a video directory, first build a stable manifest:
+
+```bash
+cd LTX-2
+
+python -m ltx_distillation.tools.build_video_caption_manifest \
+  --captions_file /path/to/captions.txt \
+  --video_dir /path/to/videos \
+  --output_file /path/to/manifest.jsonl
+```
+
+If you start from TAVGBench `release_captions.txt`, reconstruct the clips first. This also writes a manifest compatible with the latent writer:
+
+```bash
+python -m ltx_distillation.tools.reconstruct_tavgbench_dataset \
+  --captions_file /path/to/release_captions.txt \
+  --output_dir /path/to/tavgbench_reconstructed \
+  --manifest_path /path/to/tavgbench_reconstructed/manifest.jsonl
+```
+
+Then encode the videos/audio into SCM latents:
+
+```bash
+python -m ltx_distillation.tools.create_scm_latent_lmdb \
+  --manifest_path /path/to/manifest.jsonl \
+  --output_lmdb /path/to/scm_latent_lmdb \
+  --checkpoint_path /path/to/ltx-2-19b-dev.safetensors \
+  --num_frames 121 \
+  --video_height 512 \
+  --video_width 768 \
+  --video_fps 24 \
+  --device cuda \
+  --dtype bfloat16 \
+  --batch_size 1 \
+  --resume
+```
+
+For a single LMDB run, point `scm_data_path` directly to that output:
+
+```yaml
+scm_data_path: /path/to/scm_latent_lmdb
+```
+
+For multi-GPU preprocessing, run one shard per GPU with the same `--output_lmdb` root:
+
+```bash
+for SHARD_ID in 0 1 2 3 4 5 6 7; do
+  CUDA_VISIBLE_DEVICES=${SHARD_ID} \
+  python -m ltx_distillation.tools.create_scm_latent_lmdb \
+    --manifest_path /path/to/manifest.jsonl \
+    --output_lmdb /path/to/scm_latent_lmdb_shards \
+    --checkpoint_path /path/to/ltx-2-19b-dev.safetensors \
+    --num_shards 8 \
+    --shard_id ${SHARD_ID} \
+    --num_frames 121 \
+    --video_height 512 \
+    --video_width 768 \
+    --video_fps 24 \
+    --device cuda \
+    --dtype bfloat16 \
+    --batch_size 1 \
+    --resume &
+done
+wait
+```
+
+For a sharded run, `create_scm_latent_lmdb` writes subdirectories such as `shard_00000`, `shard_00001`, etc. Point `scm_data_path` to the shared root:
+
+```yaml
+scm_data_path: /path/to/scm_latent_lmdb_shards
+```
+
+Optionally decode a few latent samples to verify the LMDB before training:
+
+```bash
+python -m ltx_distillation.tools.verify_scm_latent_decode \
+  --lmdb_root /path/to/scm_latent_lmdb_shards \
+  --checkpoint_path /path/to/ltx-2-19b-dev.safetensors \
+  --output_dir /path/to/latent_decode_preview \
+  --num_samples 8
+```
+
 The config directory intentionally keeps only the default bidirectional recipes:
 
 ```text
