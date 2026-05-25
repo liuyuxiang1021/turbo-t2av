@@ -223,6 +223,16 @@ class Trainer:
         # FSDP wrapping
         self._wrap_with_fsdp()
 
+        # Force FSDP lazy init on all wrapped modules now, so benchmark
+        # forward calls do not race on internal FSDP state sharing.
+        # Without this, the teacher reference (real_score) crashes
+        # with "_is_root should not have been set yet" when it is
+        # the second FSDP-wrapped module to run its first forward.
+        _ = self.dmd.generator.training
+        _ = self.dmd.real_score.training
+        if self.dmd.fake_score is not None:
+            _ = self.dmd.fake_score.training
+
         # Optimizers
         weight_decay = getattr(config, "weight_decay", 0.0)
         generator_lr = getattr(config, "generator_lr", config.lr)
@@ -1610,16 +1620,6 @@ class Trainer:
 
     @torch.no_grad()
     def _run_teacher_reference_and_log(self):
-        # Prime FSDP lazy-init on real_score (must run BEFORE 40-step variant).
-        self._run_reference_and_log_single(
-            model="teacher",
-            mode=self.teacher_benchmark_mode,
-            num_steps_override=None,
-            ref_dir=os.path.join(self.output_path, "benchmark", "teacher"),
-            wandb_prefix="benchmark_teacher",
-            label="Teacher",
-        )
-        # Only keep the 40-step Euler teacher reference.
         if self.teacher_benchmark_include_40step_reference:
             self._run_reference_and_log_single(
                 model="teacher",
