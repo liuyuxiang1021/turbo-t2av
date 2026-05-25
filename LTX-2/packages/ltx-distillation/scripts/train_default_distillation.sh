@@ -165,6 +165,6 @@ if [ -n "${OUTPUT_PATH:-}" ]; then
 fi
 
 run_stage "Phase 3/3: full rCM from SCM checkpoint" \
-    env "${rcm_env[@]}" "${SCRIPT_DIR}/train_rcm.sh" "${RCM_CONFIG}" "$@"
+    env "${rcm_env[@]}" "${SCRIPT_DIR}/train_bidirectional.sh" rcm "${RCM_CONFIG}" "$@"
 
 echo "Default TurboT2AV recipe finished."

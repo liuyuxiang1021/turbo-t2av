@@ -146,14 +146,14 @@ wandb_name: your_run_name
 wandb_api_key: ""  # optional; fill only when explicit login is needed
 ```
 
-Use these four configs for the standard modes:
+Use these configs for the maintained training entrypoints:
 
 | Mode | Config |
 | --- | --- |
+| Full default recipe | `configs/bidirectional_dcm.yaml`, `configs/bidirectional_scm.yaml`, `configs/bidirectional_rcm.yaml` |
 | DCM warmup | `configs/bidirectional_dcm.yaml` |
 | SCM only | `configs/bidirectional_scm.yaml` |
 | DMD only | `configs/bidirectional_dmd.yaml` |
-| rCM-style SCM + DMD | `configs/bidirectional_rcm.yaml` |
 
 ## 4. Start Training
 
@@ -194,23 +194,22 @@ The default recipe writes phase run directories under `output_path`:
 <prefix>_rcm_from_scm1000/
 ```
 
-Standalone mode commands are also available:
+Standalone DCM, SCM, and DMD commands are also available:
 
 ```bash
 NUM_GPUS=8 MASTER_PORT=29500 ./scripts/train_dcm.sh
 NUM_GPUS=8 MASTER_PORT=29501 ./scripts/train_scm.sh
 NUM_GPUS=8 MASTER_PORT=29502 ./scripts/train_dmd.sh
-NUM_GPUS=8 MASTER_PORT=29503 ./scripts/train_rcm.sh
 ```
 
 To pass a specific config:
 
 ```bash
 NUM_GPUS=8 MASTER_PORT=29510 \
-./scripts/train_bidirectional.sh scm /path/to/config.yaml
+./scripts/train_scm.sh /path/to/config.yaml
 ```
 
-SCM, DMD, and rCM can start from an earlier checkpoint by setting `INIT_CHECKPOINT`, `WARMUP_CHECKPOINT`, or `DCM_CHECKPOINT`. The launcher writes a temporary config with:
+SCM and DMD can start from an earlier checkpoint by setting `INIT_CHECKPOINT`, `WARMUP_CHECKPOINT`, or `DCM_CHECKPOINT`. The launcher writes a temporary config with:
 
 ```yaml
 resume_checkpoint: <CHECKPOINT>
@@ -226,9 +225,9 @@ DCM_CHECKPOINT=/path/to/dcm500_warmup/checkpoints/checkpoint_000500/model.pth \
 NUM_GPUS=8 MASTER_PORT=29601 \
 ./scripts/train_scm.sh
 
-WARMUP_CHECKPOINT=/path/to/scm1000_from_dcm500/checkpoints/checkpoint_001000/model.pth \
-NUM_GPUS=8 MASTER_PORT=29603 \
-./scripts/train_rcm.sh
+INIT_CHECKPOINT=/path/to/checkpoints/checkpoint_001000/model.pth \
+NUM_GPUS=8 MASTER_PORT=29602 \
+./scripts/train_dmd.sh
 ```
 
 ## 5. Run Inference

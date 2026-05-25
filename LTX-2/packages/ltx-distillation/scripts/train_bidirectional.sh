@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Unified launcher for bidirectional TurboT2AV distillation modes.
+# Internal launcher shared by the public training entrypoints.
 
 set -euo pipefail
 
@@ -12,8 +12,7 @@ Modes:
   dcm       DCM warmup only
   scm       SCM only
   dmd       DMD only
-  rcm       rCM-style joint SCM + DMD
-  scm_dmd   alias for rcm
+  rcm       internal full-recipe rCM stage
 
 Warmup:
   Set INIT_CHECKPOINT, WARMUP_CHECKPOINT, or DCM_CHECKPOINT to initialize scm,
@@ -56,7 +55,7 @@ case "${MODE}" in
         DEFAULT_CONFIG="configs/bidirectional_dmd.yaml"
         TITLE="Bidirectional DMD"
         ;;
-    rcm|scm_dmd|scm+dmd)
+    rcm)
         MODE="rcm"
         DEFAULT_CONFIG="configs/bidirectional_rcm.yaml"
         TITLE="Bidirectional rCM (SCM + DMD)"
