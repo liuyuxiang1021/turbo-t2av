@@ -9,7 +9,7 @@
 
 | Prompt | Teacher (50-step) | SCM+DMD (4-step) |
 |:---|:---:|:---:|
-| Prompt 5 | <video src="https://github.com/user-attachments/assets/ffbd358d-d85b-4ccd-9cd7-ca401ca4183c" controls></video> | — |
+| Prompt 5 | <video src="https://github.com/user-attachments/assets/ffbd358d-d85b-4ccd-9cd7-ca401ca4183c" controls></video> | <video src="https://github.com/user-attachments/assets/30784eb1-634a-4eee-a718-3961f7077e72" controls></video> |
 | Prompt 6 | <video src="https://github.com/user-attachments/assets/4a43c6c1-67dc-4709-b1e1-1f1b3d401baf" controls></video> | <video src="https://github.com/user-attachments/assets/408dcc48-8c83-42ee-8008-fd362d2b752d" controls></video> |
 | Prompt 73 | <video src="https://github.com/user-attachments/assets/2c0c2ac5-1801-4df1-876c-ec088030e5b9" controls></video> | <video src="https://github.com/user-attachments/assets/f85d4bd0-c25e-4a21-a6ef-8dc7d3bc113e" controls></video> |
 | Prompt 79 | <video src="https://github.com/user-attachments/assets/d7a84f5f-786f-4502-844d-10a46f0b3a51" controls></video> | <video src="https://github.com/user-attachments/assets/159bdcd8-bcc4-443d-a495-5248934cf107" controls></video> |
