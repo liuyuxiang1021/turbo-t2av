@@ -6,16 +6,57 @@
 
 </div>
 
-| Prompt | Teacher | SCM+DMD |
-|:---|:---:|:---:|
-| The woman with long brown hair and wearing white pants and a white jacket is per... | <video src="https://github.com/user-attachments/assets/45db5c23-fbaa-4c71-bc51-c1785a6c87eb" width="320" controls></video> | <video src="https://github.com/user-attachments/assets/30784eb1-634a-4eee-a718-3961f7077e72" width="320" controls></video> |
-| The man is seen sitting and playing an acoustic guitar in front of a green shirt... | <video src="https://github.com/user-attachments/assets/03c7ceb9-a557-40ef-a8c9-984f790ae893" width="320" controls></video> | <video src="https://github.com/user-attachments/assets/408dcc48-8c83-42ee-8008-fd362d2b752d" width="320" controls></video> |
-| As the man speaks, the soothing sound of birds flapping their wings fills the ba... | <video src="https://github.com/user-attachments/assets/abfcc196-530b-472d-99a0-0f1c1c9126e6" width="320" controls></video> | <video src="https://github.com/user-attachments/assets/f85d4bd0-c25e-4a21-a6ef-8dc7d3bc113e" width="320" controls></video> |
-| Pigeons are cooing and flapping their wings while the wind blows and traffic pas... | <video src="https://github.com/user-attachments/assets/0b3a7855-a4e8-484f-9f0c-6221d4306099" width="320" controls></video> | <video src="https://github.com/user-attachments/assets/159bdcd8-bcc4-443d-a495-5248934cf107" width="320" controls></video> |
-| The sound of a truck accelerating can be heard, along with the sound of its tire... | <video src="https://github.com/user-attachments/assets/f9d8e1f4-d5a6-4c4e-b697-cf569e03b4b4" width="320" controls></video> | <video src="https://github.com/user-attachments/assets/4f30969c-b979-4981-80b4-b8244bf207e2" width="320" controls></video> |
-| The man wearing a camouflage shirt and hat sits in front of a sign as he speaks ... | <video src="https://github.com/user-attachments/assets/b5b4c3fc-b139-4fa4-ab25-d69f2c343e0c" width="320" controls></video> | <video src="https://github.com/user-attachments/assets/edaae47a-de4f-40cc-b469-b46bd78967d1" width="320" controls></video> |
-| As the woman speaks in the audio, the serene animation of a pool filled with cle... | <video src="https://github.com/user-attachments/assets/d8a5d98c-53e7-4725-8c3e-d8c6caa34b43" width="320" controls></video> | <video src="https://github.com/user-attachments/assets/d319b7d9-f1d7-4cb9-ad20-b7ab53799321" width="320" controls></video> |
-| The speaker is a woman, wearing a pink top with a butterfly design on the chest,... | <video src="https://github.com/user-attachments/assets/621486c1-d56d-4be5-9a83-0f5baeaab3d1" width="320" controls></video> | <video src="https://github.com/user-attachments/assets/e98289ce-01ed-4a10-b5f0-4815b973a212" width="320" controls></video> |
+<table>
+  <thead>
+    <tr>
+      <th align="left" width="34%">Prompt</th>
+      <th align="center" width="33%">Teacher</th>
+      <th align="center" width="33%">SCM+DMD</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td width="34%">The woman with long brown hair and wearing white pants and a white jacket is per...</td>
+      <td align="center" width="33%"><video src="https://github.com/user-attachments/assets/45db5c23-fbaa-4c71-bc51-c1785a6c87eb" width="320" controls></video></td>
+      <td align="center" width="33%"><video src="https://github.com/user-attachments/assets/30784eb1-634a-4eee-a718-3961f7077e72" width="320" controls></video></td>
+    </tr>
+    <tr>
+      <td width="34%">The man is seen sitting and playing an acoustic guitar in front of a green shirt...</td>
+      <td align="center" width="33%"><video src="https://github.com/user-attachments/assets/03c7ceb9-a557-40ef-a8c9-984f790ae893" width="320" controls></video></td>
+      <td align="center" width="33%"><video src="https://github.com/user-attachments/assets/408dcc48-8c83-42ee-8008-fd362d2b752d" width="320" controls></video></td>
+    </tr>
+    <tr>
+      <td width="34%">As the man speaks, the soothing sound of birds flapping their wings fills the ba...</td>
+      <td align="center" width="33%"><video src="https://github.com/user-attachments/assets/abfcc196-530b-472d-99a0-0f1c1c9126e6" width="320" controls></video></td>
+      <td align="center" width="33%"><video src="https://github.com/user-attachments/assets/f85d4bd0-c25e-4a21-a6ef-8dc7d3bc113e" width="320" controls></video></td>
+    </tr>
+    <tr>
+      <td width="34%">Pigeons are cooing and flapping their wings while the wind blows and traffic pas...</td>
+      <td align="center" width="33%"><video src="https://github.com/user-attachments/assets/0b3a7855-a4e8-484f-9f0c-6221d4306099" width="320" controls></video></td>
+      <td align="center" width="33%"><video src="https://github.com/user-attachments/assets/159bdcd8-bcc4-443d-a495-5248934cf107" width="320" controls></video></td>
+    </tr>
+    <tr>
+      <td width="34%">The sound of a truck accelerating can be heard, along with the sound of its tire...</td>
+      <td align="center" width="33%"><video src="https://github.com/user-attachments/assets/f9d8e1f4-d5a6-4c4e-b697-cf569e03b4b4" width="320" controls></video></td>
+      <td align="center" width="33%"><video src="https://github.com/user-attachments/assets/4f30969c-b979-4981-80b4-b8244bf207e2" width="320" controls></video></td>
+    </tr>
+    <tr>
+      <td width="34%">The man wearing a camouflage shirt and hat sits in front of a sign as he speaks ...</td>
+      <td align="center" width="33%"><video src="https://github.com/user-attachments/assets/b5b4c3fc-b139-4fa4-ab25-d69f2c343e0c" width="320" controls></video></td>
+      <td align="center" width="33%"><video src="https://github.com/user-attachments/assets/edaae47a-de4f-40cc-b469-b46bd78967d1" width="320" controls></video></td>
+    </tr>
+    <tr>
+      <td width="34%">As the woman speaks in the audio, the serene animation of a pool filled with cle...</td>
+      <td align="center" width="33%"><video src="https://github.com/user-attachments/assets/d8a5d98c-53e7-4725-8c3e-d8c6caa34b43" width="320" controls></video></td>
+      <td align="center" width="33%"><video src="https://github.com/user-attachments/assets/d319b7d9-f1d7-4cb9-ad20-b7ab53799321" width="320" controls></video></td>
+    </tr>
+    <tr>
+      <td width="34%">The speaker is a woman, wearing a pink top with a butterfly design on the chest,...</td>
+      <td align="center" width="33%"><video src="https://github.com/user-attachments/assets/621486c1-d56d-4be5-9a83-0f5baeaab3d1" width="320" controls></video></td>
+      <td align="center" width="33%"><video src="https://github.com/user-attachments/assets/e98289ce-01ed-4a10-b5f0-4815b973a212" width="320" controls></video></td>
+    </tr>
+  </tbody>
+</table>
 
 
 ## 1. Set Up The Environment
