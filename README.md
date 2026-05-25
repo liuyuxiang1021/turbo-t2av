@@ -27,7 +27,7 @@ At a high level, the workflow is:
 <table>
   <thead>
     <tr>
-      <th align="left" width="34%">Prompt</th>
+      <th align="center" width="34%">Prompt</th>
       <th align="center" width="33%">Teacher</th>
       <th align="center" width="33%">Student</th>
     </tr>
