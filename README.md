@@ -206,8 +206,6 @@ PYTHONPATH=packages/ltx-distillation/src:$PYTHONPATH \
   --num_prompts 8
 ```
 
-Outputs `sample_*.mp4` per prompt.
-
 ## 5. Run Evaluation
 
 TBA. The repository currently keeps training and single-GPU inference entrypoints. A formal evaluation script and metric workflow still need to be added.
