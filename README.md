@@ -7,16 +7,16 @@
 </div>
 ## Demo
 
-| Prompt | Teacher (50-step) | SCM+DMD (4-step) |
-|:---|:---:|:---:|
-| Prompt 5 | <video src="https://github.com/user-attachments/assets/45db5c23-fbaa-4c71-bc51-c1785a6c87eb" controls></video> | <video src="https://github.com/user-attachments/assets/30784eb1-634a-4eee-a718-3961f7077e72" controls></video> |
-| Prompt 6 | <video src="https://github.com/user-attachments/assets/03c7ceb9-a557-40ef-a8c9-984f790ae893" controls></video> | <video src="https://github.com/user-attachments/assets/408dcc48-8c83-42ee-8008-fd362d2b752d" controls></video> |
-| Prompt 73 | <video src="https://github.com/user-attachments/assets/abfcc196-530b-472d-99a0-0f1c1c9126e6" controls></video> | <video src="https://github.com/user-attachments/assets/f85d4bd0-c25e-4a21-a6ef-8dc7d3bc113e" controls></video> |
-| Prompt 79 | <video src="https://github.com/user-attachments/assets/0b3a7855-a4e8-484f-9f0c-6221d4306099" controls></video> | <video src="https://github.com/user-attachments/assets/159bdcd8-bcc4-443d-a495-5248934cf107" controls></video> |
-| Prompt 92 | <video src="https://github.com/user-attachments/assets/f9d8e1f4-d5a6-4c4e-b697-cf569e03b4b4" controls></video> | <video src="https://github.com/user-attachments/assets/4f30969c-b979-4981-80b4-b8244bf207e2" controls></video> |
-| Prompt 99 | <video src="https://github.com/user-attachments/assets/b5b4c3fc-b139-4fa4-ab25-d69f2c343e0c" controls></video> | <video src="https://github.com/user-attachments/assets/edaae47a-de4f-40cc-b469-b46bd78967d1" controls></video> |
-| Prompt 108 | <video src="https://github.com/user-attachments/assets/d8a5d98c-53e7-4725-8c3e-d8c6caa34b43" controls></video> | <video src="https://github.com/user-attachments/assets/d319b7d9-f1d7-4cb9-ad20-b7ab53799321" controls></video> |
-| Prompt 165 | <video src="https://github.com/user-attachments/assets/621486c1-d56d-4be5-9a83-0f5baeaab3d1" controls></video> | <video src="https://github.com/user-attachments/assets/e98289ce-01ed-4a10-b5f0-4815b973a212" controls></video> |
+| # | Teacher | SCM+DMD | Prompt |
+|:---|:---:|:---:|:---|
+| 5 | <video src="https://github.com/user-attachments/assets/45db5c23-fbaa-4c71-bc51-c1785a6c87eb" controls></video> | <video src="https://github.com/user-attachments/assets/30784eb1-634a-4eee-a718-3961f7077e72" controls></video> | The woman with long brown hair and wearing white pants and a white jacket is performing on... |
+| 6 | <video src="https://github.com/user-attachments/assets/03c7ceb9-a557-40ef-a8c9-984f790ae893" controls></video> | <video src="https://github.com/user-attachments/assets/408dcc48-8c83-42ee-8008-fd362d2b752d" controls></video> | The man is seen sitting and playing an acoustic guitar in front of a green shirt hanging o... |
+| 73 | <video src="https://github.com/user-attachments/assets/abfcc196-530b-472d-99a0-0f1c1c9126e6" controls></video> | <video src="https://github.com/user-attachments/assets/f85d4bd0-c25e-4a21-a6ef-8dc7d3bc113e" controls></video> | As the man speaks, the soothing sound of birds flapping their wings fills the background. ... |
+| 79 | <video src="https://github.com/user-attachments/assets/0b3a7855-a4e8-484f-9f0c-6221d4306099" controls></video> | <video src="https://github.com/user-attachments/assets/159bdcd8-bcc4-443d-a495-5248934cf107" controls></video> | Pigeons are cooing and flapping their wings while the wind blows and traffic passes by. In... |
+| 92 | <video src="https://github.com/user-attachments/assets/f9d8e1f4-d5a6-4c4e-b697-cf569e03b4b4" controls></video> | <video src="https://github.com/user-attachments/assets/4f30969c-b979-4981-80b4-b8244bf207e2" controls></video> | The sound of a truck accelerating can be heard, along with the sound of its tires squealin... |
+| 99 | <video src="https://github.com/user-attachments/assets/b5b4c3fc-b139-4fa4-ab25-d69f2c343e0c" controls></video> | <video src="https://github.com/user-attachments/assets/edaae47a-de4f-40cc-b469-b46bd78967d1" controls></video> | The man wearing a camouflage shirt and hat sits in front of a sign as he speaks for a few ... |
+| 108 | <video src="https://github.com/user-attachments/assets/d8a5d98c-53e7-4725-8c3e-d8c6caa34b43" controls></video> | <video src="https://github.com/user-attachments/assets/d319b7d9-f1d7-4cb9-ad20-b7ab53799321" controls></video> | As the woman speaks in the audio, the serene animation of a pool filled with clear and pri... |
+| 165 | <video src="https://github.com/user-attachments/assets/621486c1-d56d-4be5-9a83-0f5baeaab3d1" controls></video> | <video src="https://github.com/user-attachments/assets/e98289ce-01ed-4a10-b5f0-4815b973a212" controls></video> | The speaker is a woman, wearing a pink top with a butterfly design on the chest, stands in... |
 
 ## 1. Set Up The Environment
 
