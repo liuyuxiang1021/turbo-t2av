@@ -109,8 +109,6 @@ Download the base assets and keep their paths available for the config files:
 
 Prepare the distillation data:
 
-All training data is driven by a single CSV file. No separate prompts.txt needed.
-
 **mapping.csv** — one row per sample, header `video_id,prompt`:
 
 ```csv
@@ -133,19 +131,6 @@ python -m ltx_distillation.tools.create_scm_latent_lmdb \
   --output_lmdb /path/to/scm_latent_lmdb \
   --num_workers 8
 ```
-
-**mapping.csv format** — CSV with header `video_id,prompt`:
-
-```csv
-video_id,prompt
-001.mp4,"A dog barking in a park."
-002.mp4,"A piano solo performance."
-```
-
-| Input | Config key | Used by |
-| --- | --- | --- |
-| `/path/to/prompts.txt` | `data_path` | one prompt per line; generate with: `tail -n +2 mapping.csv \| cut -d',' -f2- \| sed 's/^"//;s/"$//' > prompts.txt` |
-| `/path/to/scm_latent_lmdb` | `scm_data_path` | precomputed SCM latents (required for DCM/SCM/rCM) |
 
 ## 3. Edit The Configs
 
