@@ -268,26 +268,6 @@ Each model writes `sample_*.mp4`, `sample_*.json`, `samples.csv`, and `run.log` 
 
 TBA. The repository currently keeps training and single-GPU inference entrypoints. A formal evaluation script and metric workflow still need to be added.
 
-## Script Reference
-
-Distillation entrypoints live in `LTX-2/packages/ltx-distillation/scripts/`:
-
-```text
-train_bidirectional.sh
-train_default_distillation.sh
-train_dcm.sh
-train_scm.sh
-train_dmd.sh
-train_rcm.sh
-train_scm_dmd.sh
-```
-
-Single-GPU inference lives in:
-
-```text
-LTX-2/scripts/run_inference_single_gpu.sh
-```
-
 ## Repository Structure
 
 ```text
