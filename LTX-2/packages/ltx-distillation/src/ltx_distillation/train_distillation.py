@@ -507,6 +507,28 @@ class Trainer:
             "delegate construction at benchmark time."
         )
 
+    @staticmethod
+    def _reset_fsdp_lazy_init(module):
+        """Reset FSDP root bookkeeping after standalone benchmark forwards."""
+        if module is None:
+            return
+        try:
+            from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
+        except Exception:
+            return
+
+        for submodule in module.modules():
+            if isinstance(submodule, FSDP) and hasattr(submodule, "_reset_lazy_init"):
+                submodule._reset_lazy_init()
+
+    def _reset_training_fsdp_lazy_init(self):
+        """Let the next training forward re-establish a clean FSDP root tree."""
+        self._reset_fsdp_lazy_init(self.dmd.generator)
+        self._reset_fsdp_lazy_init(self.dmd.real_score)
+        self._reset_fsdp_lazy_init(self.dmd.fake_score)
+        self._reset_fsdp_lazy_init(self.dmd.text_encoder)
+        barrier()
+
     def _wrap_with_fsdp(self):
         """Wrap models with FSDP for distributed training."""
         config = self.config
@@ -744,9 +766,6 @@ class Trainer:
         self.teacher_benchmark_enabled = bool(
             getattr(config, "teacher_benchmark_enabled", self.benchmark_enabled)
         )
-        self.teacher_benchmark_num_inference_steps = int(
-            getattr(config, "teacher_benchmark_num_inference_steps", 40)
-        )
         self.teacher_benchmark_video_guidance_scale = float(
             getattr(
                 config,
@@ -768,37 +787,9 @@ class Trainer:
                 not (self.dmd.use_rcm_style_dmd and self.scm_enabled),
             )
         )
-        default_teacher_benchmark_mode = "rcm_trig" if self.dmd.use_rcm_style_dmd else "native_rf"
-        self.teacher_benchmark_mode = str(
-            getattr(config, "teacher_benchmark_mode", default_teacher_benchmark_mode)
-        ).lower()
-        self.teacher_benchmark_include_native_rf_reference = bool(
-            getattr(
-                config,
-                "teacher_benchmark_include_native_rf_reference",
-                self.dmd.use_rcm_style_dmd,
-            )
-        )
-        self.teacher_benchmark_include_40step_reference = bool(
-            getattr(config, "teacher_benchmark_include_40step_reference", True)
-        )
         self.teacher_benchmark_40step_num_inference_steps = int(
             getattr(config, "teacher_benchmark_40step_num_inference_steps", 40)
         )
-        if self.teacher_benchmark_mode not in {"rcm_trig", "native_rf"}:
-            if self.is_main_process:
-                print(
-                    f"[Benchmark] Invalid teacher_benchmark_mode={self.teacher_benchmark_mode}, "
-                    f"falling back to {default_teacher_benchmark_mode}."
-                )
-            self.teacher_benchmark_mode = default_teacher_benchmark_mode
-        if self.teacher_benchmark_mode == "rcm_trig" and not self.dmd.use_rcm_style_dmd:
-            if self.is_main_process:
-                print(
-                    "[Benchmark] teacher_benchmark_mode=rcm_trig requested, but current DMD "
-                    "style is not trig-based. Falling back to native_rf."
-                )
-            self.teacher_benchmark_mode = "native_rf"
         self.benchmark_prompts = []
 
         if self.benchmark_iters <= 0:
@@ -838,9 +829,9 @@ class Trainer:
                 print(f"[Benchmark] mode={self.benchmark_mode}, kv_cache={self.benchmark_use_kv_cache}, frames_per_block={self.benchmark_num_frame_per_block}")
                 if self.teacher_benchmark_enabled:
                     print(
-                        "[Benchmark] teacher reference enabled: "
-                        f"{self.teacher_benchmark_num_inference_steps} steps, "
-                        f"mode={self.teacher_benchmark_mode}, "
+                        "[Benchmark] teacher_40_steps enabled: "
+                        f"{self.teacher_benchmark_40step_num_inference_steps} steps, "
+                        "mode=native_rf, "
                         f"video_cfg={self.teacher_benchmark_video_guidance_scale}, "
                         f"audio_cfg={self.teacher_benchmark_audio_guidance_scale}"
                     )
@@ -848,13 +839,6 @@ class Trainer:
                         "[Benchmark] student CFG "
                         f"{'enabled' if self.student_benchmark_use_cfg else 'disabled'}."
                     )
-                    if self.teacher_benchmark_include_native_rf_reference and self.teacher_benchmark_mode != "native_rf":
-                        print("[Benchmark] teacher native RF comparison reference enabled.")
-                    if self.teacher_benchmark_include_40step_reference:
-                        print(
-                            "[Benchmark] teacher 40-step quality target enabled: "
-                            f"{self.teacher_benchmark_40step_num_inference_steps} steps, mode=native_rf."
-                        )
                 for i, p in enumerate(self.benchmark_prompts):
                     print(f"  [{i}] {p[:80]}{'...' if len(p) > 80 else ''}")
         except Exception as e:
@@ -1444,7 +1428,7 @@ class Trainer:
             )
 
         step_dir = os.path.join(
-            self.output_path, "benchmark", "student_4_step", f"step_{self.step:07d}"
+            self.output_path, "benchmark", "student_4_steps", f"step_{self.step:07d}"
         )
         os.makedirs(step_dir, exist_ok=True)
 
@@ -1607,75 +1591,18 @@ class Trainer:
             )
 
         barrier()
+        self._reset_training_fsdp_lazy_init()
 
     @torch.no_grad()
     def _run_teacher_reference_and_log(self):
-        teacher_runs = [
-            (
-                self.teacher_benchmark_mode,
-                None,
-                os.path.join(self.output_path, "benchmark", "teacher"),
-                "benchmark_teacher",
-                "Teacher",
-            )
-        ]
-        if self.teacher_benchmark_include_native_rf_reference and self.teacher_benchmark_mode != "native_rf":
-            teacher_runs.append(
-                (
-                    "native_rf",
-                    self.teacher_benchmark_num_inference_steps,
-                    os.path.join(self.output_path, "benchmark", "teacher_native_rf"),
-                    "benchmark_teacher_native_rf",
-                    "Teacher-NativeRF",
-                )
-            )
-        if self.teacher_benchmark_include_40step_reference:
-            teacher_runs.append(
-                (
-                    "native_rf",
-                    self.teacher_benchmark_40step_num_inference_steps,
-                    os.path.join(self.output_path, "benchmark", "teacher_40_step"),
-                    "benchmark_teacher_40step",
-                    "Teacher-40Step",
-                    "euler",  # deterministic Euler for quality anchor
-                )
-            )
-
-        for mode, num_steps_override, ref_dir, wandb_prefix, label, *rest in teacher_runs:
-            step_mode = rest[0] if rest else "re_corrupt"
-            self._run_reference_and_log_single(
-                model="teacher",
-                mode=mode,
-                num_steps_override=num_steps_override,
-                ref_dir=ref_dir,
-                wandb_prefix=wandb_prefix,
-                label=label,
-                step_mode=step_mode,
-            )
-
-        # Teacher no-CFG reference: same as teacher but CFG=1.0.
-        # Should match student_ref (both no CFG, same weights at step 0).
         self._run_reference_and_log_single(
             model="teacher",
-            mode=self.teacher_benchmark_mode,
-            num_steps_override=None,
-            ref_dir=os.path.join(self.output_path, "benchmark", "teacher_nocfg"),
-            wandb_prefix="benchmark_teacher_nocfg",
-            label="Teacher-NoCFG",
-            cfg_override=1.0,
-        )
-
-        # Student reference at step 0. For SCM/rCM guidance distillation the
-        # student is evaluated conditional-only by default, matching rCM
-        # generation instead of applying CFG a second time.
-        self._run_reference_and_log_single(
-            model="student",
-            mode=self.teacher_benchmark_mode,
-            num_steps_override=None,
-            ref_dir=os.path.join(self.output_path, "benchmark", "student_ref"),
-            wandb_prefix="benchmark_student_ref",
-            label="Student-Ref",
-            cfg_override=1.0,
+            mode="native_rf",
+            num_steps_override=self.teacher_benchmark_40step_num_inference_steps,
+            ref_dir=os.path.join(self.output_path, "benchmark", "teacher_40_steps"),
+            wandb_prefix="benchmark_teacher_40steps",
+            label="Teacher-40Steps",
+            step_mode="euler",
         )
 
     @torch.no_grad()
@@ -1705,7 +1632,7 @@ class Trainer:
             num_steps = max(0, sigmas.numel() - 1)
         else:
             num_steps = (
-                self.teacher_benchmark_num_inference_steps
+                self.teacher_benchmark_40step_num_inference_steps
                 if num_steps_override is None
                 else int(num_steps_override)
             )

@@ -111,8 +111,5 @@ benchmark_seed: 12345
 benchmark_video_fps: 24
 benchmark_audio_sample_rate: 24000
 teacher_benchmark_enabled: true
-teacher_benchmark_num_inference_steps: 40
 teacher_benchmark_video_guidance_scale: 3.0
 teacher_benchmark_audio_guidance_scale: 5.0
-teacher_benchmark_mode: rcm_trig
-teacher_benchmark_include_native_rf_reference: true
