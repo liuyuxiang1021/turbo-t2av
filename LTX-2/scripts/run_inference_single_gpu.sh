@@ -24,7 +24,7 @@ REPO_ROOT="$(cd "${LTX2_ROOT}/.." && pwd)"
 DATA_ROOT="${DATA_ROOT:-/data/datasets/turbodiff_datasets_and_ckpt}"
 RUN_ROOT="${RUN_ROOT:-${DATA_ROOT}/my_omniforcing}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-${DATA_ROOT}/my_TurboT2AV/inference_single_seed}"
-PROMPTS_FILE="${PROMPTS_FILE:-${DATA_ROOT}/tavgbench/release_prompts.txt}"
+PROMPTS_FILE="${PROMPTS_FILE:-${DATA_ROOT}/seedance_dataset/dance/packet/prompts.txt}"
 
 if [[ -z "${PYTHON_BIN:-}" ]]; then
     if [[ -x "${LTX2_ROOT}/.pixi/envs/default/bin/python" ]]; then

@@ -58,7 +58,7 @@ distillation_loss: dmd
 # SCM Configuration (disabled by default for DMD-only runs)
 # =============================================================================
 scm_enabled: false
-scm_data_path: /path/to/data/ode_lmdb
+scm_data_path: /data/datasets/turbodiff_datasets_and_ckpt/seedance_dataset/dance/packet/scm_latent_lmdb
 scm_batch_size: 1
 scm_max_pair: 100000000
 scm_weight: 1.0
@@ -95,7 +95,7 @@ scheduler_type: constant
 # =============================================================================
 # Path to text prompts file (one prompt per line).
 # Generate enhanced prompts using: LTX-2/packages/pe/batch_enhance.py
-data_path: /data/datasets/turbodiff_datasets_and_ckpt/tavgbench/release_prompts.txt
+data_path: /data/datasets/turbodiff_datasets_and_ckpt/seedance_dataset/dance/packet/prompts.txt
 backward_simulation: true
 
 negative_prompt: "blurry, out of focus, overexposed, underexposed, low contrast, washed out colors, excessive noise, grainy texture, poor lighting, flickering, motion blur, distorted proportions, unnatural skin tones, deformed facial features, asymmetrical face, missing facial features, extra limbs, disfigured hands, wrong hand count, artifacts around text, inconsistent perspective, camera shake, incorrect depth of field, background too sharp, background clutter, distracting reflections, harsh shadows, inconsistent lighting direction, color banding, cartoonish rendering, 3D CGI look, unrealistic materials, uncanny valley effect, incorrect ethnicity, wrong gender, exaggerated expressions, wrong gaze direction, mismatched lip sync, silent or muted audio, distorted voice, robotic voice, echo, background noise, off-sync audio, incorrect dialogue, added dialogue, repetitive speech, jittery movement, awkward pauses, incorrect timing, unnatural transitions, inconsistent framing, tilted camera, flat lighting, inconsistent tone, cinematic oversaturation, stylized filters, or AI artifacts."

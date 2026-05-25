@@ -17,29 +17,19 @@ git clone https://github.com/liuyuxiang1021/TurboT2AV.git
 cd TurboT2AV/LTX-2
 ```
 
-The workspace includes both `uv.lock` and `pixi.lock`. They are alternative environment managers, not the same environment. Use one path.
-
-Option A, create or update the uv Python virtual environment:
-
-```bash
-uv sync
-```
-
-Option B, create or update the Pixi environment:
+Create or update the Pixi environment:
 
 ```bash
 pixi install
 ```
 
-After installing with Pixi, run commands through the Pixi environment or activate it according to your local workflow.
-
-Or install the local packages into an existing Python environment:
+Install the local packages inside that Pixi environment:
 
 ```bash
-pip install -e packages/ltx-core
-pip install -e packages/ltx-pipelines
-pip install -e packages/ltx-causal
-pip install -e packages/ltx-distillation
+pixi run pip install -e packages/ltx-core
+pixi run pip install -e packages/ltx-pipelines
+pixi run pip install -e packages/ltx-causal
+pixi run pip install -e packages/ltx-distillation
 ```
 
 ## 2. Download Weights And Prepare Data
@@ -51,7 +41,7 @@ Download the base assets and keep their paths available for the config files:
 | `ltx-2-19b-dev.safetensors` | `checkpoint_path` |
 | `gemma-3-12b-it-qat-q4_0-unquantized` | `gemma_path` |
 
-Prepare the distillation data:
+Prepare the distillation data from the Seedance dance packet:
 
 | Input | Config key | Used by |
 | --- | --- | --- |
@@ -60,57 +50,41 @@ Prepare the distillation data:
 
 ### Convert Videos To SCM Latents
 
-SCM and rCM do not read raw videos directly during training. They read a latent LMDB generated from real video/audio samples. The pipeline is:
+SCM and rCM do not read raw videos directly during training. They read a latent LMDB generated from real video/audio samples. LMDB is a local key-value database; here it stores the pre-encoded video/audio latents and prompts so training can load them quickly.
+
+Only this packet layout is maintained:
 
 ```text
-videos + captions -> manifest.jsonl -> SCM latent LMDB -> scm_data_path
+/data/datasets/turbodiff_datasets_and_ckpt/seedance_dataset/dance/packet/
+├── mapping.csv
+└── dance_dataset/
+    ├── 001.mp4
+    ├── 002.mp4
+    └── ...
 ```
 
-The raw data can be provided in either format:
+The pipeline is:
 
 ```text
-captions.txt + video_dir/
+packet/mapping.csv + packet/dance_dataset/*.mp4 -> manifest.jsonl + prompts.txt -> SCM latent LMDB
 ```
 
-where each caption line is:
-
-```text
-clip_name.mp4 A caption or prompt for this clip
-```
-
-or as a manifest JSONL:
-
-```json
-{"prompt": "A caption or prompt for this clip", "video_path": "/abs/path/clip_name.mp4"}
-```
-
-If you start from `captions.txt` and a video directory, first build a stable manifest:
+Build the manifest and prompt file:
 
 ```bash
 cd LTX-2
 
-python -m ltx_distillation.tools.build_video_caption_manifest \
-  --captions_file /path/to/captions.txt \
-  --video_dir /path/to/videos \
-  --output_file /path/to/manifest.jsonl
-```
-
-If you start from TAVGBench `release_captions.txt`, reconstruct the clips first. This also writes a manifest compatible with the latent writer:
-
-```bash
-python -m ltx_distillation.tools.reconstruct_tavgbench_dataset \
-  --captions_file /path/to/release_captions.txt \
-  --output_dir /path/to/tavgbench_reconstructed \
-  --manifest_path /path/to/tavgbench_reconstructed/manifest.jsonl
+pixi run python -m ltx_distillation.tools.prepare_seedance_packet \
+  --packet_root /data/datasets/turbodiff_datasets_and_ckpt/seedance_dataset/dance/packet
 ```
 
 Then encode the videos/audio into SCM latents:
 
 ```bash
-python -m ltx_distillation.tools.create_scm_latent_lmdb \
-  --manifest_path /path/to/manifest.jsonl \
-  --output_lmdb /path/to/scm_latent_lmdb \
-  --checkpoint_path /path/to/ltx-2-19b-dev.safetensors \
+pixi run python -m ltx_distillation.tools.create_scm_latent_lmdb \
+  --manifest_path /data/datasets/turbodiff_datasets_and_ckpt/seedance_dataset/dance/packet/manifest.jsonl \
+  --output_lmdb /data/datasets/turbodiff_datasets_and_ckpt/seedance_dataset/dance/packet/scm_latent_lmdb \
+  --checkpoint_path /data/datasets/turbodiff_datasets_and_ckpt/TurboT2AV/ltx-2-19b-dev.safetensors \
   --num_frames 121 \
   --video_height 512 \
   --video_width 768 \
@@ -121,48 +95,20 @@ python -m ltx_distillation.tools.create_scm_latent_lmdb \
   --resume
 ```
 
-For a single LMDB run, point `scm_data_path` directly to that output:
+Point the configs to the generated files:
 
 ```yaml
-scm_data_path: /path/to/scm_latent_lmdb
-```
-
-For multi-GPU preprocessing, run one shard per GPU with the same `--output_lmdb` root:
-
-```bash
-for SHARD_ID in 0 1 2 3 4 5 6 7; do
-  CUDA_VISIBLE_DEVICES=${SHARD_ID} \
-  python -m ltx_distillation.tools.create_scm_latent_lmdb \
-    --manifest_path /path/to/manifest.jsonl \
-    --output_lmdb /path/to/scm_latent_lmdb_shards \
-    --checkpoint_path /path/to/ltx-2-19b-dev.safetensors \
-    --num_shards 8 \
-    --shard_id ${SHARD_ID} \
-    --num_frames 121 \
-    --video_height 512 \
-    --video_width 768 \
-    --video_fps 24 \
-    --device cuda \
-    --dtype bfloat16 \
-    --batch_size 1 \
-    --resume &
-done
-wait
-```
-
-For a sharded run, `create_scm_latent_lmdb` writes subdirectories such as `shard_00000`, `shard_00001`, etc. Point `scm_data_path` to the shared root:
-
-```yaml
-scm_data_path: /path/to/scm_latent_lmdb_shards
+data_path: /data/datasets/turbodiff_datasets_and_ckpt/seedance_dataset/dance/packet/prompts.txt
+scm_data_path: /data/datasets/turbodiff_datasets_and_ckpt/seedance_dataset/dance/packet/scm_latent_lmdb
 ```
 
 Optionally decode a few latent samples to verify the LMDB before training:
 
 ```bash
-python -m ltx_distillation.tools.verify_scm_latent_decode \
-  --lmdb_root /path/to/scm_latent_lmdb_shards \
-  --checkpoint_path /path/to/ltx-2-19b-dev.safetensors \
-  --output_dir /path/to/latent_decode_preview \
+pixi run python -m ltx_distillation.tools.verify_scm_latent_decode \
+  --lmdb_root /data/datasets/turbodiff_datasets_and_ckpt/seedance_dataset/dance/packet/scm_latent_lmdb \
+  --checkpoint_path /data/datasets/turbodiff_datasets_and_ckpt/TurboT2AV/ltx-2-19b-dev.safetensors \
+  --output_dir /data/datasets/turbodiff_datasets_and_ckpt/seedance_dataset/dance/packet/latent_decode_preview \
   --num_samples 8
 ```
 
@@ -183,8 +129,8 @@ Before training, update the selected YAML under `LTX-2/packages/ltx-distillation
 ```yaml
 checkpoint_path: /path/to/ltx-2-19b-dev.safetensors
 gemma_path: /path/to/gemma-3-12b-it-qat-q4_0-unquantized
-data_path: /path/to/prompts.txt
-scm_data_path: /path/to/scm_latent_lmdb_or_root
+data_path: /data/datasets/turbodiff_datasets_and_ckpt/seedance_dataset/dance/packet/prompts.txt
+scm_data_path: /data/datasets/turbodiff_datasets_and_ckpt/seedance_dataset/dance/packet/scm_latent_lmdb
 output_path: /path/to/outputs
 wandb_api_key: ""  # optional; fill only when WandB login is needed
 ```

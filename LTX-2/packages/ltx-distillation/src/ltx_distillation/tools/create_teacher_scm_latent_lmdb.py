@@ -330,7 +330,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--config_path", required=True)
     parser.add_argument(
         "--prompts_file",
-        default="/data/datasets/turbodiff_datasets_and_ckpt/tavgbench/release_prompts.txt",
+        default="/data/datasets/turbodiff_datasets_and_ckpt/seedance_dataset/dance/packet/prompts.txt",
     )
     parser.add_argument("--num_prompts", type=int, default=1000)
     parser.add_argument("--start_index", type=int, default=0)
