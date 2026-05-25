@@ -887,34 +887,17 @@ def _finalize_metadata(
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Create faithful SCM latent LMDB from real AV samples.")
     parser.add_argument(
-        "--manifest_path",
-        default=None,
+        "--mapping_csv",
+        required=True,
         help=(
-            "Metadata file describing real samples. Supports .jsonl/.json/.csv and "
-            "accepts either prompt/video_path or caption/media_path keys."
-        ),
-    )
-    parser.add_argument(
-        "--captions_path",
-        default=None,
-        help=(
-            "Plain-text captions file where each line is "
-            "'<video_filename> <caption>'. Use together with --video_dir."
+            "CSV file with columns (video_id, prompt). "
+            "video_id is the filename relative to --video_dir."
         ),
     )
     parser.add_argument(
         "--video_dir",
-        default=None,
-        help="Directory containing the video files referenced by --captions_path.",
-    )
-    parser.add_argument(
-        "--mapping_csv",
-        default=None,
-        help=(
-            "CSV file with columns (video_id, prompt). "
-            "video_id gives the filename under --video_dir. "
-            "Use together with --video_dir."
-        ),
+        required=True,
+        help="Directory containing the video files referenced in mapping_csv.",
     )
     parser.add_argument(
         "--output_lmdb",
@@ -951,13 +934,11 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
-    has_manifest = bool(args.manifest_path)
-    has_captions = bool(args.captions_path and args.video_dir)
-    has_mapping = bool(args.mapping_csv and args.video_dir)
-    if sum([has_manifest, has_captions, has_mapping]) != 1:
+    if not (args.mapping_csv and args.video_dir):
         raise ValueError(
-            "Provide exactly one input source: --manifest_path, "
-            "(--captions_path + --video_dir), or (--mapping_csv + --video_dir)."
+            "Both --mapping_csv and --video_dir are required. "
+            "mapping_csv: CSV with columns (video_id, prompt). "
+            "video_dir: directory containing the video files."
         )
 
     if not _is_valid_frame_count(args.num_frames):
@@ -989,26 +970,20 @@ def main() -> None:
         raise RuntimeError("CUDA device requested but not available.")
 
     dtype = _parse_dtype(args.dtype)
-    if args.manifest_path:
-        entries = _load_manifest(args.manifest_path, args.max_samples)
-    elif args.mapping_csv:
-        entries = _load_manifest(args.mapping_csv, args.max_samples)
-        # mapping_csv has relative filenames — resolve against video_dir
-        video_dir = Path(args.video_dir).expanduser().resolve()
-        resolved = []
-        for e in entries:
-            if not Path(e.video_path).is_absolute():
-                e = ManifestEntry(
-                    prompt=e.prompt,
-                    video_path=str(video_dir / e.video_path),
-                    audio_path=e.audio_path,
-                    source_index=e.source_index,
-                    video_name=e.video_name or Path(e.video_path).name,
-                )
-            resolved.append(e)
-        entries = resolved
-    else:
-        entries = _load_entries_from_video_dir(args.captions_path, args.video_dir, args.max_samples)
+    entries = _load_manifest(args.mapping_csv, args.max_samples)
+    video_dir = Path(args.video_dir).expanduser().resolve()
+    resolved = []
+    for e in entries:
+        if not Path(e.video_path).is_absolute():
+            e = ManifestEntry(
+                prompt=e.prompt,
+                video_path=str(video_dir / e.video_path),
+                audio_path=e.audio_path,
+                source_index=e.source_index,
+                video_name=e.video_name or Path(e.video_path).name,
+            )
+        resolved.append(e)
+    entries = resolved
     entries = _filter_entries_by_source_index(entries, args.source_index_start, args.source_index_end)
     entries = _select_shard_entries(entries, args.num_shards, args.shard_id)
     output_lmdb_path = _resolve_output_lmdb_path(args.output_lmdb, args.num_shards, args.shard_id)
