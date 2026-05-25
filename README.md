@@ -6,6 +6,20 @@
 
 </div>
 
+## TurboT2AV — SCM+DMD Demo
+
+| Prompt | SCM+DMD (scm=1) |
+|:---|:---:|
+| Prompt 6 | <video src="https://github.com/liuyuxiang1021/TurboT2AV/releases/download/untagged-ed0e5a38c3b2f6cd5b59/03_scm_dmd_scm1_p6.mp4" controls></video> |
+| Prompt 73 | <video src="https://github.com/liuyuxiang1021/TurboT2AV/releases/download/untagged-ed0e5a38c3b2f6cd5b59/03_scm_dmd_scm1_p73.mp4" controls></video> |
+| Prompt 79 | <video src="https://github.com/liuyuxiang1021/TurboT2AV/releases/download/untagged-ed0e5a38c3b2f6cd5b59/03_scm_dmd_scm1_p79.mp4" controls></video> |
+| Prompt 92 | <video src="https://github.com/liuyuxiang1021/TurboT2AV/releases/download/untagged-ed0e5a38c3b2f6cd5b59/03_scm_dmd_scm1_p92.mp4" controls></video> |
+| Prompt 99 | <video src="https://github.com/liuyuxiang1021/TurboT2AV/releases/download/untagged-ed0e5a38c3b2f6cd5b59/03_scm_dmd_scm1_p99.mp4" controls></video> |
+| Prompt 108 | <video src="https://github.com/liuyuxiang1021/TurboT2AV/releases/download/untagged-ed0e5a38c3b2f6cd5b59/03_scm_dmd_scm1_p108.mp4" controls></video> |
+| Prompt 165 | <video src="https://github.com/liuyuxiang1021/TurboT2AV/releases/download/untagged-ed0e5a38c3b2f6cd5b59/03_scm_dmd_scm1_p165.mp4" controls></video> |
+
+
+
 ## 1. Set Up The Environment
 
 Clone the repo and enter the LTX-2 workspace:
