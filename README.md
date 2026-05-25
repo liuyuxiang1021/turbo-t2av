@@ -173,23 +173,27 @@ Distillation checkpoints are saved as:
 
 ## Single-GPU Inference
 
-Run commands from `LTX-2/packages/ltx-distillation`.
+The single-GPU inference launcher is kept under `LTX-2/scripts/`, matching the original project layout. It sequentially evaluates the default comparison checkpoints on one GPU.
 
 ```bash
-./scripts/run_av_inference.sh \
-  --config /path/to/config.yaml \
-  --checkpoint /path/to/checkpoints/checkpoint_XXXXXX/model.pth \
-  --output-dir /path/to/inference_outputs \
-  --prompts-file /path/to/prompts.txt \
-  --num-prompts 200 \
-  --gpu 0
+bash LTX-2/scripts/run_inference_single_gpu.sh 0 200
 ```
 
-The script runs one checkpoint on one GPU and writes generated samples under `--output-dir`.
+Useful overrides:
+
+```bash
+PYTHON_BIN=/path/to/python \
+RUN_ROOT=/path/to/training_runs \
+OUTPUT_ROOT=/path/to/inference_outputs \
+PROMPTS_FILE=/path/to/prompts.txt \
+bash LTX-2/scripts/run_inference_single_gpu.sh 0 200
+```
+
+Each model writes `sample_*.mp4`, `sample_*.json`, `samples.csv`, and `run.log` under `OUTPUT_ROOT/<index>_<name>/`. Separate `sample_*.wav` files are removed after the MP4 is written.
 
 ## Kept Scripts
 
-Only the distillation and single-GPU inference entrypoints are kept in `LTX-2/packages/ltx-distillation/scripts/`:
+Only distillation entrypoints are kept in `LTX-2/packages/ltx-distillation/scripts/`:
 
 ```text
 train_bidirectional.sh
@@ -199,8 +203,9 @@ train_scm.sh
 train_dmd.sh
 train_rcm.sh
 train_scm_dmd.sh
-run_av_inference.sh
 ```
+
+Single-GPU inference is kept in `LTX-2/scripts/run_inference_single_gpu.sh`.
 
 ## Repository Structure
 
@@ -209,6 +214,7 @@ TurboT2AV/
 ├── README.md
 ├── static/
 └── LTX-2/
+    ├── scripts/
     └── packages/
         ├── ltx-core/
         ├── ltx-causal/
