@@ -5,20 +5,18 @@
 <a href="https://github.com/liuyuxiang1021/TurboT2AV"><img src="https://img.shields.io/badge/GitHub-TurboT2AV-blue.svg" alt="GitHub"></a>
 
 </div>
-
 ## Demo
 
 | Prompt | Teacher (50-step) | SCM+DMD (4-step) |
 |:---|:---:|:---:|
-| Prompt 5 | <video src="https://github.com/liuyuxiang1021/TurboT2AV/releases/download/v0.1-demo/teacher_p5.mp4" controls></video> | <video src="https://github.com/liuyuxiang1021/TurboT2AV/releases/download/v0.1-demo/03_scm_dmd_scm1_p5.mp4" controls></video> |
-| Prompt 6 | <video src="https://github.com/liuyuxiang1021/TurboT2AV/releases/download/v0.1-demo/teacher_p6.mp4" controls></video> | <video src="https://github.com/liuyuxiang1021/TurboT2AV/releases/download/v0.1-demo/03_scm_dmd_scm1_p6.mp4" controls></video> |
-| Prompt 73 | <video src="https://github.com/liuyuxiang1021/TurboT2AV/releases/download/v0.1-demo/teacher_p73.mp4" controls></video> | <video src="https://github.com/liuyuxiang1021/TurboT2AV/releases/download/v0.1-demo/03_scm_dmd_scm1_p73.mp4" controls></video> |
-| Prompt 79 | <video src="https://github.com/liuyuxiang1021/TurboT2AV/releases/download/v0.1-demo/teacher_p79.mp4" controls></video> | <video src="https://github.com/liuyuxiang1021/TurboT2AV/releases/download/v0.1-demo/03_scm_dmd_scm1_p79.mp4" controls></video> |
-| Prompt 92 | <video src="https://github.com/liuyuxiang1021/TurboT2AV/releases/download/v0.1-demo/teacher_p92.mp4" controls></video> | <video src="https://github.com/liuyuxiang1021/TurboT2AV/releases/download/v0.1-demo/03_scm_dmd_scm1_p92.mp4" controls></video> |
-| Prompt 99 | <video src="https://github.com/liuyuxiang1021/TurboT2AV/releases/download/v0.1-demo/teacher_p99.mp4" controls></video> | <video src="https://github.com/liuyuxiang1021/TurboT2AV/releases/download/v0.1-demo/03_scm_dmd_scm1_p99.mp4" controls></video> |
-| Prompt 108 | <video src="https://github.com/liuyuxiang1021/TurboT2AV/releases/download/v0.1-demo/teacher_p108.mp4" controls></video> | <video src="https://github.com/liuyuxiang1021/TurboT2AV/releases/download/v0.1-demo/03_scm_dmd_scm1_p108.mp4" controls></video> |
-| Prompt 165 | <video src="https://github.com/liuyuxiang1021/TurboT2AV/releases/download/v0.1-demo/teacher_p165.mp4" controls></video> | <video src="https://github.com/liuyuxiang1021/TurboT2AV/releases/download/v0.1-demo/03_scm_dmd_scm1_p165.mp4" controls></video> |
-
+| Prompt 5 | <video src="https://github.com/user-attachments/assets/ffbd358d-d85b-4ccd-9cd7-ca401ca4183c" controls></video> | — |
+| Prompt 6 | <video src="https://github.com/user-attachments/assets/4a43c6c1-67dc-4709-b1e1-1f1b3d401baf" controls></video> | <video src="https://github.com/user-attachments/assets/408dcc48-8c83-42ee-8008-fd362d2b752d" controls></video> |
+| Prompt 73 | <video src="https://github.com/user-attachments/assets/2c0c2ac5-1801-4df1-876c-ec088030e5b9" controls></video> | <video src="https://github.com/user-attachments/assets/f85d4bd0-c25e-4a21-a6ef-8dc7d3bc113e" controls></video> |
+| Prompt 79 | <video src="https://github.com/user-attachments/assets/d7a84f5f-786f-4502-844d-10a46f0b3a51" controls></video> | <video src="https://github.com/user-attachments/assets/159bdcd8-bcc4-443d-a495-5248934cf107" controls></video> |
+| Prompt 92 | <video src="https://github.com/user-attachments/assets/9812cd12-89dc-4563-85d1-991040b7e6e3" controls></video> | <video src="https://github.com/user-attachments/assets/4f30969c-b979-4981-80b4-b8244bf207e2" controls></video> |
+| Prompt 99 | <video src="https://github.com/user-attachments/assets/d5ac1b1b-aed9-4a38-be74-d3a61346e95b" controls></video> | <video src="https://github.com/user-attachments/assets/edaae47a-de4f-40cc-b469-b46bd78967d1" controls></video> |
+| Prompt 108 | <video src="https://github.com/user-attachments/assets/055b3bda-c346-46ae-94db-a6d1ce5c562e" controls></video> | <video src="https://github.com/user-attachments/assets/d319b7d9-f1d7-4cb9-ad20-b7ab53799321" controls></video> |
+| Prompt 165 | <video src="https://github.com/user-attachments/assets/7ceddfe6-e9a2-4f72-87a1-853c8d32f8dc" controls></video> | <video src="https://github.com/user-attachments/assets/e98289ce-01ed-4a10-b5f0-4815b973a212" controls></video> |
 
 
 ## TurboT2AV — SCM+DMD Demo
