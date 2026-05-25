@@ -31,6 +31,15 @@ Download the base assets and update the paths in the YAML files under `LTX-2/pac
 | `ltx-2-19b-dev.safetensors` | `checkpoint_path` |
 | `gemma-3-12b-it-qat-q4_0-unquantized` | `gemma_path` |
 
+The config directory keeps the default bidirectional distillation recipes:
+
+```text
+bidirectional_dcm.yaml
+bidirectional_scm.yaml
+bidirectional_dmd.yaml
+bidirectional_rcm.yaml
+```
+
 WandB credentials should be passed through the environment, not committed into configs:
 
 ```bash
@@ -162,9 +171,25 @@ Distillation checkpoints are saved as:
 <output_path>/<run_dir>/checkpoints/checkpoint_XXXXXX/model.pth
 ```
 
+## Single-GPU Inference
+
+Run commands from `LTX-2/packages/ltx-distillation`.
+
+```bash
+./scripts/run_av_inference.sh \
+  --config /path/to/config.yaml \
+  --checkpoint /path/to/checkpoints/checkpoint_XXXXXX/model.pth \
+  --output-dir /path/to/inference_outputs \
+  --prompts-file /path/to/prompts.txt \
+  --num-prompts 200 \
+  --gpu 0
+```
+
+The script runs one checkpoint on one GPU and writes generated samples under `--output-dir`.
+
 ## Kept Scripts
 
-Only distillation scripts are kept in `LTX-2/packages/ltx-distillation/scripts/`:
+Only the distillation and single-GPU inference entrypoints are kept in `LTX-2/packages/ltx-distillation/scripts/`:
 
 ```text
 train_bidirectional.sh
@@ -174,6 +199,7 @@ train_scm.sh
 train_dmd.sh
 train_rcm.sh
 train_scm_dmd.sh
+run_av_inference.sh
 ```
 
 ## Repository Structure
