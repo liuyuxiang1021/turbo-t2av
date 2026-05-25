@@ -822,8 +822,16 @@ class Trainer:
             # When backward_simulation=false, data_path is an LMDB directory.
             # Use benchmark_prompt_file if specified, otherwise fall back to data_path.
             data_path = getattr(config, "benchmark_prompt_file", None) or config.data_path
+            import csv
             with open(data_path, "r", encoding="utf-8") as f:
-                all_prompts = [line.strip() for line in f if line.strip()]
+                first = f.readline().strip()
+                f.seek(0)
+                if data_path.endswith(".csv") or ("," in first and "video_id" in first):
+                    all_prompts = [row.get("prompt", row.get("caption", "")).strip()
+                                  for row in csv.DictReader(f) if row]
+                else:
+                    all_prompts = [line.strip() for line in f if line.strip()]
+            all_prompts = [p for p in all_prompts if p]
             self.benchmark_prompts = all_prompts[: self.benchmark_num_prompts]
             if self.is_main_process:
                 print(f"[Benchmark] Loaded {len(self.benchmark_prompts)} prompts from {data_path}")
