@@ -2,7 +2,7 @@
 
 # TurboT2AV
 
-<a href="https://github.com/liuyuxiang1021/TurboT2AV"><img src="https://img.shields.io/badge/GitHub-TurboT2AV-blue.svg" alt="GitHub"></a>
+**TURBO TEXT-TO-AUDIO-VIDEO GENERATION**
 
 </div>
 
