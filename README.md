@@ -172,42 +172,6 @@ The recipe produces three checkpoint directories under `output_path`:
 <prefix>_rcm_from_scm1000/
 ```
 
-Standalone DCM, SCM, and DMD commands are also available:
-
-```bash
-NUM_GPUS=8 MASTER_PORT=29500 ./scripts/train_dcm.sh
-NUM_GPUS=8 MASTER_PORT=29501 ./scripts/train_scm.sh
-NUM_GPUS=8 MASTER_PORT=29502 ./scripts/train_dmd.sh
-```
-
-To pass a specific config:
-
-```bash
-NUM_GPUS=8 MASTER_PORT=29510 \
-./scripts/train_scm.sh /path/to/config.yaml
-```
-
-SCM and DMD can start from an earlier checkpoint by setting `INIT_CHECKPOINT`, `WARMUP_CHECKPOINT`, or `DCM_CHECKPOINT`. The launcher writes a temporary config with:
-
-```yaml
-resume_checkpoint: <CHECKPOINT>
-checkpoint_load_mode: parallel
-resume_training_state: false
-skip_initial_checkpoint: true
-```
-
-Examples:
-
-```bash
-DCM_CHECKPOINT=/path/to/dcm500_warmup/checkpoints/checkpoint_000500/model.pth \
-NUM_GPUS=8 MASTER_PORT=29601 \
-./scripts/train_scm.sh
-
-INIT_CHECKPOINT=/path/to/checkpoints/checkpoint_001000/model.pth \
-NUM_GPUS=8 MASTER_PORT=29602 \
-./scripts/train_dmd.sh
-```
-
 ## 4. Run Inference
 
 ### Teacher (40-step reference)
