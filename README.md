@@ -6,6 +6,20 @@
 
 </div>
 
+## Demo
+
+| Prompt | Teacher (50-step) | SCM+DMD (4-step) |
+|:---|:---:|:---:|
+| Prompt 6 | uploading... | <video src="https://github.com/liuyuxiang1021/TurboT2AV/releases/download/v0.1-demo/03_scm_dmd_scm1_p6.mp4" controls></video> |
+| Prompt 73 | uploading... | <video src="https://github.com/liuyuxiang1021/TurboT2AV/releases/download/v0.1-demo/03_scm_dmd_scm1_p73.mp4" controls></video> |
+| Prompt 79 | uploading... | <video src="https://github.com/liuyuxiang1021/TurboT2AV/releases/download/v0.1-demo/03_scm_dmd_scm1_p79.mp4" controls></video> |
+| Prompt 92 | uploading... | <video src="https://github.com/liuyuxiang1021/TurboT2AV/releases/download/v0.1-demo/03_scm_dmd_scm1_p92.mp4" controls></video> |
+| Prompt 99 | uploading... | <video src="https://github.com/liuyuxiang1021/TurboT2AV/releases/download/v0.1-demo/03_scm_dmd_scm1_p99.mp4" controls></video> |
+| Prompt 108 | uploading... | <video src="https://github.com/liuyuxiang1021/TurboT2AV/releases/download/v0.1-demo/03_scm_dmd_scm1_p108.mp4" controls></video> |
+| Prompt 165 | uploading... | <video src="https://github.com/liuyuxiang1021/TurboT2AV/releases/download/v0.1-demo/03_scm_dmd_scm1_p165.mp4" controls></video> |
+
+
+
 ## TurboT2AV — SCM+DMD Demo
 
 | Prompt | SCM+DMD (scm=1) |
