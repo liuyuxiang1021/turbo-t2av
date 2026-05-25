@@ -109,16 +109,21 @@ Download the base assets and keep their paths available for the config files:
 
 Prepare the distillation data:
 
-**prompts.txt** — one plain-text prompt per line:
+All training data is driven by a single CSV file. No separate prompts.txt needed.
 
-```text
-A dog barking in a park.
-A piano solo performance.
-A woman singing on stage.
-...
+**mapping.csv** — one row per sample, header `video_id,prompt`:
+
+```csv
+video_id,prompt
+001.mp4,"A dog barking in a park."
+002.mp4,"A piano solo performance."
+003.mp4,"A woman singing on stage."
 ```
 
-**SCM latent LMDB** — precomputed VAE latents for SCM/DCM training. Generate with the included tool:
+- `video_id` — filename relative to `--video_dir` in the LMDB tool.
+- `prompt` — free-text caption used for both LMDB creation and training/inference.
+
+**SCM latent LMDB** — precomputed VAE latents for SCM/DCM training. Generate from mapping.csv:
 
 ```bash
 python -m ltx_distillation.tools.create_scm_latent_lmdb \
@@ -139,8 +144,8 @@ video_id,prompt
 
 | Input | Config key | Used by |
 | --- | --- | --- |
-| `/path/to/dataset/prompts.txt` | `data_path` | prompts for training and inference |
-| `/path/to/scm_latent_lmdb` | `scm_data_path` | precomputed SCM latents (required for DCM/SCM/DCM) |
+| `/path/to/prompts.txt` | `data_path` | one prompt per line; generate with: `tail -n +2 mapping.csv \| cut -d',' -f2- \| sed 's/^"//;s/"$//' > prompts.txt` |
+| `/path/to/scm_latent_lmdb` | `scm_data_path` | precomputed SCM latents (required for DCM/SCM/rCM) |
 
 ## 3. Edit The Configs
 
