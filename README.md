@@ -140,10 +140,10 @@ wandb_api_key: ""  # optional; fill only when WandB login is needed
 WandB logging is optional. If the machine is already logged in, leave `wandb_api_key` empty. If a run needs an explicit key, put it in the config you are launching, for example `LTX-2/packages/ltx-distillation/configs/bidirectional_rcm.yaml`:
 
 ```yaml
-wandb_project: TurboT2AV
-wandb_entity: liuyuxiang1021-tianjin-university
-wandb_name: bidirectional_rcm
-wandb_api_key: "wandb_..."
+wandb_project: your_wandb_project
+wandb_entity: ""  # optional; leave empty for the default account/team
+wandb_name: your_run_name
+wandb_api_key: ""  # optional; fill only when explicit login is needed
 ```
 
 Use these four configs for the standard modes:

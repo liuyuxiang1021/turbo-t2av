@@ -124,7 +124,7 @@ output_path: /path/to/outputs
 log_iters: 200
 
 wandb_project: TurboT2AV
-wandb_entity: liuyuxiang1021-tianjin-university
+wandb_entity: ""
 wandb_name: bidirectional_dmd
 wandb_api_key: ""
 

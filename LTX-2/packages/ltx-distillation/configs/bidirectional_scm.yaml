@@ -104,7 +104,7 @@ train_log_all_scalars: true
 checkpoint_iters: 500
 
 wandb_project: TurboT2AV
-wandb_entity: liuyuxiang1021-tianjin-university
+wandb_entity: ""
 wandb_name: bidirectional_scm
 wandb_api_key: ""
 
