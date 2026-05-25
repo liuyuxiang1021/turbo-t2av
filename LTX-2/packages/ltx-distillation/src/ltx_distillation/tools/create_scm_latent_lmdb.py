@@ -908,12 +908,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--output_lmdb",
-        default="/data/datasets/turbodiff_datasets_and_ckpt/my_TurboT2AV/scm_latent",
+        default="/path/to/scm_latent_lmdb",
         help="Output LMDB path.",
     )
     parser.add_argument(
         "--checkpoint_path",
-        default="/data/datasets/turbodiff_datasets_and_ckpt/TurboT2AV/ltx-2-19b-dev.safetensors",
+        default="/path/to/ltx-2-19b-dev.safetensors",
         help="LTX checkpoint containing video/audio VAE weights.",
     )
     parser.add_argument("--num_frames", type=int, default=121)

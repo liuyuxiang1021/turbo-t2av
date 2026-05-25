@@ -1,4 +1,4 @@
-"""Prepare Seedance packet metadata for TurboT2AV distillation."""
+"""Prepare dataset metadata for TurboT2AV distillation."""
 
 from __future__ import annotations
 
@@ -15,35 +15,35 @@ def _join_prompt(video_prompt: str, audio_prompt: str) -> str:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Build manifest.jsonl and prompts.txt from a Seedance packet directory."
+        description="Build manifest.jsonl and prompts.txt from a dataset directory."
     )
     parser.add_argument(
-        "--packet_root",
-        default="/data/datasets/turbodiff_datasets_and_ckpt/seedance_dataset/dance/packet",
-        help="Directory containing mapping.csv and dance_dataset/*.mp4.",
+        "--dataset_root",
+        required=True,
+        help="Directory containing mapping.csv and videos/*.mp4.",
     )
     parser.add_argument(
         "--output_dir",
         default=None,
-        help="Output directory. Defaults to --packet_root.",
+        help="Output directory. Defaults to --dataset_root.",
     )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    packet_root = Path(args.packet_root).expanduser().resolve()
-    output_dir = Path(args.output_dir).expanduser().resolve() if args.output_dir else packet_root
+    dataset_root = Path(args.dataset_root).expanduser().resolve()
+    output_dir = Path(args.output_dir).expanduser().resolve() if args.output_dir else dataset_root
 
-    mapping_path = packet_root / "mapping.csv"
-    video_dir = packet_root / "dance_dataset"
+    mapping_path = dataset_root / "mapping.csv"
+    video_dir = dataset_root / "videos"
     manifest_path = output_dir / "manifest.jsonl"
     prompts_path = output_dir / "prompts.txt"
 
     if not mapping_path.is_file():
         raise FileNotFoundError(f"mapping.csv not found: {mapping_path}")
     if not video_dir.is_dir():
-        raise FileNotFoundError(f"dance_dataset directory not found: {video_dir}")
+        raise FileNotFoundError(f"videos directory not found: {video_dir}")
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -79,11 +79,11 @@ def main() -> None:
             prompts_f.write(prompt.replace("\n", " ") + "\n")
             count += 1
 
-    print(f"[seedance] manifest: {manifest_path}")
-    print(f"[seedance] prompts:  {prompts_path}")
-    print(f"[seedance] samples:  {count}")
+    print(f"[dataset] manifest: {manifest_path}")
+    print(f"[dataset] prompts:  {prompts_path}")
+    print(f"[dataset] samples:  {count}")
     if missing:
-        print(f"[seedance] missing videos skipped: {missing}")
+        print(f"[dataset] missing videos skipped: {missing}")
 
 
 if __name__ == "__main__":

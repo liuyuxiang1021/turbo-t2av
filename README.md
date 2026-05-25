@@ -41,7 +41,7 @@ Download the base assets and keep their paths available for the config files:
 | `ltx-2-19b-dev.safetensors` | `checkpoint_path` |
 | `gemma-3-12b-it-qat-q4_0-unquantized` | `gemma_path` |
 
-Prepare the distillation data from the Seedance dance packet:
+Prepare the distillation data from a processed video dataset:
 
 | Input | Config key | Used by |
 | --- | --- | --- |
@@ -52,12 +52,12 @@ Prepare the distillation data from the Seedance dance packet:
 
 SCM and rCM do not read raw videos directly during training. They read a latent LMDB generated from real video/audio samples. LMDB is a local key-value database; here it stores the pre-encoded video/audio latents and prompts so training can load them quickly.
 
-The maintained packet layout is shown below. The path is an example; replace `/path/to/packet` with the local packet directory.
+The CSV-based layout below is an example of the maintained input format. Replace `/path/to/dataset` with the local dataset directory.
 
 ```text
-/path/to/packet/
+/path/to/dataset/
 ├── mapping.csv
-└── dance_dataset/
+└── videos/
     ├── 001.mp4
     ├── 002.mp4
     └── ...
@@ -66,25 +66,25 @@ The maintained packet layout is shown below. The path is an example; replace `/p
 The pipeline is:
 
 ```text
-packet/mapping.csv + packet/dance_dataset/*.mp4 -> manifest.jsonl + prompts.txt -> SCM latent LMDB
+dataset/mapping.csv + dataset/videos/*.mp4 -> manifest.jsonl + prompts.txt -> SCM latent LMDB
 ```
 
-By default, `manifest.jsonl` and `prompts.txt` are written under `/path/to/packet`.
+By default, `manifest.jsonl` and `prompts.txt` are written under `/path/to/dataset`.
 
 Build the manifest and prompt file:
 
 ```bash
 cd LTX-2
 
-pixi run python -m ltx_distillation.tools.prepare_seedance_packet \
-  --packet_root /path/to/packet
+pixi run python -m ltx_distillation.tools.prepare_dataset \
+  --dataset_root /path/to/dataset
 ```
 
 Then encode the videos/audio into SCM latents:
 
 ```bash
 pixi run python -m ltx_distillation.tools.create_scm_latent_lmdb \
-  --manifest_path /path/to/packet/manifest.jsonl \
+  --manifest_path /path/to/dataset/manifest.jsonl \
   --output_lmdb /path/to/scm_latent_lmdb \
   --checkpoint_path /path/to/ltx-2-19b-dev.safetensors \
   --num_frames 121 \
@@ -100,7 +100,7 @@ pixi run python -m ltx_distillation.tools.create_scm_latent_lmdb \
 Point the configs to the generated files:
 
 ```yaml
-data_path: /path/to/packet/prompts.txt
+data_path: /path/to/dataset/prompts.txt
 scm_data_path: /path/to/scm_latent_lmdb
 ```
 
@@ -131,7 +131,7 @@ Before training, update the selected YAML under `LTX-2/packages/ltx-distillation
 ```yaml
 checkpoint_path: /path/to/ltx-2-19b-dev.safetensors
 gemma_path: /path/to/gemma-3-12b-it-qat-q4_0-unquantized
-data_path: /path/to/packet/prompts.txt
+data_path: /path/to/dataset/prompts.txt
 scm_data_path: /path/to/scm_latent_lmdb
 output_path: /path/to/outputs
 wandb_api_key: ""  # optional; fill only when WandB login is needed

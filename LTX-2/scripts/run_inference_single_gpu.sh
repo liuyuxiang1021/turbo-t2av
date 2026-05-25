@@ -6,7 +6,6 @@
 #
 # Useful environment variables:
 #   PYTHON_BIN=/path/to/python
-#   DATA_ROOT=/data/datasets/turbodiff_datasets_and_ckpt
 #   RUN_ROOT=/path/to/training-runs
 #   OUTPUT_ROOT=/path/to/inference-output
 #   PROMPTS_FILE=/path/to/prompts.txt
@@ -21,10 +20,9 @@ LTX2_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 DISTILLATION_ROOT="${LTX2_ROOT}/packages/ltx-distillation"
 REPO_ROOT="$(cd "${LTX2_ROOT}/.." && pwd)"
 
-DATA_ROOT="${DATA_ROOT:-/data/datasets/turbodiff_datasets_and_ckpt}"
-RUN_ROOT="${RUN_ROOT:-${DATA_ROOT}/my_omniforcing}"
-OUTPUT_ROOT="${OUTPUT_ROOT:-${DATA_ROOT}/my_TurboT2AV/inference_single_seed}"
-PROMPTS_FILE="${PROMPTS_FILE:-${DATA_ROOT}/seedance_dataset/dance/packet/prompts.txt}"
+RUN_ROOT="${RUN_ROOT:-/path/to/training-runs}"
+OUTPUT_ROOT="${OUTPUT_ROOT:-/path/to/inference-output}"
+PROMPTS_FILE="${PROMPTS_FILE:-/path/to/prompts.txt}"
 
 if [[ -z "${PYTHON_BIN:-}" ]]; then
     if [[ -x "${LTX2_ROOT}/.pixi/envs/default/bin/python" ]]; then

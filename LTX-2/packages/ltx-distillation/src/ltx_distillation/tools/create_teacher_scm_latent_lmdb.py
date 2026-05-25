@@ -330,7 +330,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--config_path", required=True)
     parser.add_argument(
         "--prompts_file",
-        default="/data/datasets/turbodiff_datasets_and_ckpt/seedance_dataset/dance/packet/prompts.txt",
+        default="/path/to/dataset/prompts.txt",
     )
     parser.add_argument("--num_prompts", type=int, default=1000)
     parser.add_argument("--start_index", type=int, default=0)
@@ -338,11 +338,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--shard_id", type=int, default=0)
     parser.add_argument(
         "--output_lmdb",
-        default="/data/datasets/turbodiff_datasets_and_ckpt/my_TurboT2AV/scm_latent_teacher_1000",
+        default="/path/to/scm_latent_teacher",
     )
     parser.add_argument(
         "--preview_dir",
-        default="/data/datasets/turbodiff_datasets_and_ckpt/my_TurboT2AV/scm_latent_teacher_1000_preview",
+        default="/path/to/scm_latent_teacher_preview",
     )
     parser.add_argument("--preview_count", type=int, default=16)
     parser.add_argument("--mode", choices=["native_rf", "rcm_trig"], default="native_rf")
