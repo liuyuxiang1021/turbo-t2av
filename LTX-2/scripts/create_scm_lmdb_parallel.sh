@@ -8,6 +8,8 @@ CKPT="${3:?}"
 OUTPUT="${4:?}"
 NUM_GPUS="${NUM_GPUS:-8}"
 WORKERS="${NUM_WORKERS:-32}"
+MAX_SAMPLES="${MAX_SAMPLES:-1000}"
+
 
 mkdir -p "$OUTPUT"
 
@@ -21,6 +23,7 @@ for i in $(seq 0 $((NUM_GPUS - 1))); do
     --num_shards "$NUM_GPUS" \
     --shard_id "$i" \
     --num_workers "$WORKERS" \
+    --max_samples "$MAX_SAMPLES" \
     > "${OUTPUT}/shard_${i}.log" 2>&1 &
 done
 wait
