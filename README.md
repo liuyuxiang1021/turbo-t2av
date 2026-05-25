@@ -17,11 +17,21 @@ git clone https://github.com/liuyuxiang1021/TurboT2AV.git
 cd TurboT2AV/LTX-2
 ```
 
-Use the project environment when `uv` or `pixi` is available:
+The workspace includes both `uv.lock` and `pixi.lock`. They are alternative environment managers, not the same environment. Use one path.
+
+Option A, create or update the uv Python virtual environment:
 
 ```bash
 uv sync
 ```
+
+Option B, create or update the Pixi environment:
+
+```bash
+pixi install
+```
+
+After installing with Pixi, run commands through the Pixi environment or activate it according to your local workflow.
 
 Or install the local packages into an existing Python environment:
 
