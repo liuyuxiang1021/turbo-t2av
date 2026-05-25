@@ -243,4 +243,8 @@ TurboT2AV/
 
 ## Acknowledgements
 
-TurboT2AV builds on LTX-2, Self-Forcing, CausVid, rCM, and DMD-style distillation work.
+TurboT2AV builds on:
+
+- [rCM](https://github.com/NVlabs/rcm)
+- [OmniForcing](https://github.com/OmniForcing/OmniForcing)
+- [LTX-2](https://github.com/Lightricks/LTX-2)
