@@ -6,24 +6,6 @@
 
 </div>
 
-## TurboT2AV — Consistency Distillation Demos
-
-
-| Prompt | DCM500 | SCM1000 | DMD-only | SCM+DMD |
-|:---|:---:|:---:|:---:|:---:|
-| Prompt 5 | <video src="https://github.com/user-attachments/assets/6d8c1b6a-b0dd-437f-a2d6-15e76660a9e4" controls></video> | <video src="https://github.com/user-attachments/assets/f8e85d37-0f3c-4e9e-b7cc-0bd20acb9423" controls></video> | <video src="https://github.com/user-attachments/assets/26fdf548-fa0f-41ac-a029-333ad2683bf0" controls></video> | <video src="https://github.com/user-attachments/assets/b24a7826-10b8-46a2-806d-2a8a7239cd5b" controls></video> |
-| Prompt 6 | <video src="https://github.com/user-attachments/assets/108a7e57-a6a7-427a-8054-9fccfe014139" controls></video> | <video src="https://github.com/user-attachments/assets/f2b4fb0e-eaac-4afe-8a12-48eb266eb5aa" controls></video> | <video src="https://github.com/user-attachments/assets/847ec948-25ba-44a6-a759-8ed990030d64" controls></video> | <video src="https://github.com/user-attachments/assets/beaa0569-1671-4382-8e3b-94ada731bdef" controls></video> |
-| Prompt 73 | <video src="https://github.com/user-attachments/assets/d90a43cb-f426-490e-87fa-1ae4286eb683" controls></video> | <video src="https://github.com/user-attachments/assets/7fc68b85-a43f-407e-a918-a41b10707aab" controls></video> | <video src="https://github.com/user-attachments/assets/d1935401-cb50-463d-9b91-f20ec99055e5" controls></video> | <video src="https://github.com/user-attachments/assets/a2d7a977-8ae6-4527-a87b-2261b5e5df75" controls></video> |
-| Prompt 79 | <video src="https://github.com/user-attachments/assets/6241fec0-62c7-449c-a64f-c86a63bbf4b0" controls></video> | <video src="https://github.com/user-attachments/assets/f1ec4f83-b171-4341-92de-b2d5caad92c3" controls></video> | <video src="https://github.com/user-attachments/assets/ff249534-04cc-4936-bf31-4b88d1304905" controls></video> | <video src="https://github.com/user-attachments/assets/0112b842-abee-4f64-bfd3-ee4a9f674955" controls></video> |
-| Prompt 92 | <video src="https://github.com/user-attachments/assets/26f3c929-736c-48e7-8a8a-6918672e8c71" controls></video> | <video src="https://github.com/user-attachments/assets/e8c24bd1-7d78-4da0-83ea-63751201df0c" controls></video> | <video src="https://github.com/user-attachments/assets/36908aae-a8b0-474f-827f-62d7984269e3" controls></video> | <video src="https://github.com/user-attachments/assets/caa3a56c-b33e-4d31-aced-41aaf9f0ad90" controls></video> |
-| Prompt 99 | <video src="https://github.com/user-attachments/assets/4af594c8-7c24-496d-843d-f27d470d3cb7" controls></video> | <video src="https://github.com/user-attachments/assets/428e7505-98f3-422d-b48c-2b9e717df6e3" controls></video> | <video src="https://github.com/user-attachments/assets/2a326ebe-65a2-451a-a1fb-3f589f160326" controls></video> | <video src="https://github.com/user-attachments/assets/1e08cecc-dd26-4ca9-8b32-b39e906ec2d1" controls></video> |
-| Prompt 108 | <video src="https://github.com/user-attachments/assets/07d46837-3068-4e60-925f-726d3a941e49" controls></video> | <video src="https://github.com/user-attachments/assets/77051699-8a8e-465c-8ebe-8d0ba94b5882" controls></video> | <video src="https://github.com/user-attachments/assets/cfc73e14-616f-436c-b6a7-dec7743f9984" controls></video> | <video src="https://github.com/user-attachments/assets/b583d52b-ee51-4687-b6cf-8cc332c61e6c" controls></video> |
-| Prompt 165 | <video src="https://github.com/user-attachments/assets/45f5072e-7982-4ea3-8f0a-a789bafbe8cc" controls></video> | <video src="https://github.com/user-attachments/assets/d04c0c4b-fd9a-428c-b2e0-0aa65b2914c0" controls></video> | <video src="https://github.com/user-attachments/assets/57815744-7cd2-4568-a805-2b4901b8778f" controls></video> | <video src="https://github.com/user-attachments/assets/fe5ec9a1-67dd-46a0-8d65-14309982aa00" controls></video> |
-
-
-
-**TurboT2AV** is a text-to-audio-video distillation project built around LTX-2 components. The maintained workflow is bidirectional distillation: DCM warmup, SCM, DMD, and rCM-style joint SCM+DMD.
-
 ## 1. Set Up The Environment
 
 Clone the repo and enter the LTX-2 workspace:
