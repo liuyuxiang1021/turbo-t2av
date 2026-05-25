@@ -218,7 +218,7 @@ PYTHONPATH=packages/ltx-distillation/src:$PYTHONPATH \
   CUDA_VISIBLE_DEVICES=0 \
   pixi run python -m ltx_distillation.tools.run_av_inference_eval \
   --config_path packages/ltx-distillation/configs/bidirectional_rcm.yaml \
-  --prompts_file /path/to/prompts.txt \
+  --prompts_file /path/to/mapping.csv \
   --output_dir /path/to/teacher_output \
   --model_kind teacher \
   --teacher_mode native_rf \
@@ -234,7 +234,7 @@ PYTHONPATH=packages/ltx-distillation/src:$PYTHONPATH \
   CUDA_VISIBLE_DEVICES=0 \
   pixi run python -m ltx_distillation.tools.run_av_inference_eval \
   --config_path packages/ltx-distillation/configs/bidirectional_rcm.yaml \
-  --prompts_file /path/to/prompts.txt \
+  --prompts_file /path/to/mapping.csv \
   --output_dir /path/to/student_output \
   --model_kind student \
   --student_checkpoint /path/to/checkpoint.pt \

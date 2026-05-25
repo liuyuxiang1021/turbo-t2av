@@ -34,8 +34,16 @@ from ltx_distillation.train_distillation import compute_latent_shapes
 
 
 def _load_prompts(prompts_file: str, limit: int | None) -> list[str]:
+    import csv
     with open(prompts_file, "r", encoding="utf-8") as f:
-        prompts = [line.strip() for line in f if line.strip()]
+        first = f.readline().strip()
+        f.seek(0)
+        if prompts_file.endswith(".csv") or ("," in first and "video_id" in first):
+            prompts = [row.get("prompt", row.get("caption", "")).strip()
+                      for row in csv.DictReader(f) if row]
+        else:
+            prompts = [line.strip() for line in f if line.strip()]
+    prompts = [p for p in prompts if p]
     if limit is not None:
         prompts = prompts[:limit]
     return prompts
