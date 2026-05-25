@@ -1444,7 +1444,7 @@ class Trainer:
             )
 
         step_dir = os.path.join(
-            self.output_path, "benchmark", "student", f"step_{self.step:07d}"
+            self.output_path, "benchmark", "student_4_step", f"step_{self.step:07d}"
         )
         os.makedirs(step_dir, exist_ok=True)
 
@@ -1616,7 +1616,7 @@ class Trainer:
                 model="teacher",
                 mode="native_rf",
                 num_steps_override=self.teacher_benchmark_40step_num_inference_steps,
-                ref_dir=os.path.join(self.output_path, "benchmark", "teacher_40step"),
+                ref_dir=os.path.join(self.output_path, "benchmark", "teacher_40_step"),
                 wandb_prefix="benchmark_teacher_40step",
                 label="Teacher-40Step",
                 step_mode="euler",
