@@ -210,36 +210,39 @@ NUM_GPUS=8 MASTER_PORT=29602 \
 
 ## 4. Run Inference
 
-Single-GPU inference is kept in the original project layout:
-
-```text
-LTX-2/scripts/run_inference_single_gpu.sh
-```
-
-The default command sequentially evaluates the default comparison checkpoints on one GPU:
+### Teacher (40-step reference)
 
 ```bash
-bash LTX-2/scripts/run_inference_single_gpu.sh 0 200
+cd LTX-2
+PYTHONPATH=packages/ltx-distillation/src:$PYTHONPATH \
+  CUDA_VISIBLE_DEVICES=0 \
+  pixi run python -m ltx_distillation.tools.run_av_inference_eval \
+  --config_path packages/ltx-distillation/configs/bidirectional_rcm.yaml \
+  --prompts_file /path/to/prompts.txt \
+  --output_dir /path/to/teacher_output \
+  --model_kind teacher \
+  --teacher_mode native_rf \
+  --teacher_steps 40 \
+  --num_prompts 8
 ```
 
-Arguments:
-
-```text
-0    GPU id
-200  number of prompts
-```
-
-Useful overrides:
+### Student (4-step, single GPU)
 
 ```bash
-PYTHON_BIN=/path/to/python \
-RUN_ROOT=/path/to/training_runs \
-OUTPUT_ROOT=/path/to/inference_outputs \
-PROMPTS_FILE=/path/to/prompts.txt \
-bash LTX-2/scripts/run_inference_single_gpu.sh 0 200
+cd LTX-2
+PYTHONPATH=packages/ltx-distillation/src:$PYTHONPATH \
+  CUDA_VISIBLE_DEVICES=0 \
+  pixi run python -m ltx_distillation.tools.run_av_inference_eval \
+  --config_path packages/ltx-distillation/configs/bidirectional_rcm.yaml \
+  --prompts_file /path/to/prompts.txt \
+  --output_dir /path/to/student_output \
+  --model_kind student \
+  --student_checkpoint /path/to/checkpoint.pt \
+  --student_param auto \
+  --num_prompts 8
 ```
 
-Each model writes `sample_*.mp4`, `sample_*.json`, `samples.csv`, and `run.log` under `OUTPUT_ROOT/<index>_<name>/`. Separate `sample_*.wav` files are removed after MP4 writing.
+Outputs `sample_*.mp4` per prompt. For batch evaluation, use `LTX-2/scripts/run_inference_single_gpu.sh`.
 
 ## 5. Run Evaluation
 
