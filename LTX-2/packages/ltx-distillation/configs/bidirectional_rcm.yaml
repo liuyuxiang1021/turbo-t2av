@@ -96,6 +96,7 @@ log_iters: 200
 wandb_project: TurboT2AV
 wandb_entity: liuyuxiang1021-tianjin-university
 wandb_name: bidirectional_rcm
+wandb_api_key: ""
 
 seed: 42
 

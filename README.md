@@ -32,12 +32,6 @@ pip install -e packages/ltx-causal
 pip install -e packages/ltx-distillation
 ```
 
-Set WandB credentials through the environment instead of committing them into YAML files:
-
-```bash
-export WANDB_API_KEY=...
-```
-
 ## 2. Download Weights And Prepare Data
 
 Download the base assets and keep their paths available for the config files:
@@ -74,6 +68,16 @@ gemma_path: /path/to/gemma-3-12b-it-qat-q4_0-unquantized
 data_path: /path/to/prompts.txt
 scm_data_path: /path/to/scm_latent_lmdb_or_root
 output_path: /path/to/outputs
+wandb_api_key: ""  # optional; fill only when WandB login is needed
+```
+
+WandB logging is optional. If the machine is already logged in, leave `wandb_api_key` empty. If a run needs an explicit key, put it in the config you are launching, for example `LTX-2/packages/ltx-distillation/configs/bidirectional_rcm.yaml`:
+
+```yaml
+wandb_project: TurboT2AV
+wandb_entity: liuyuxiang1021-tianjin-university
+wandb_name: bidirectional_rcm
+wandb_api_key: "wandb_..."
 ```
 
 Use these four configs for the standard modes:
