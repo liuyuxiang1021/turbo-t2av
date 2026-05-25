@@ -9,14 +9,14 @@
 
 | Prompt | Teacher (50-step) | SCM+DMD (4-step) |
 |:---|:---:|:---:|
-| Prompt 5 | <video src="https://github.com/user-attachments/assets/7599799e-b084-4403-983a-bf96fe97b215" controls></video> | <video src="https://github.com/user-attachments/assets/30784eb1-634a-4eee-a718-3961f7077e72" controls></video> |
-| Prompt 6 | <video src="https://github.com/user-attachments/assets/626fa006-7435-4b0d-8a83-9a78008849e6" controls></video> | <video src="https://github.com/user-attachments/assets/408dcc48-8c83-42ee-8008-fd362d2b752d" controls></video> |
-| Prompt 73 | <video src="https://github.com/user-attachments/assets/bd383112-4b79-45d2-ab96-8463b9bcc47a" controls></video> | <video src="https://github.com/user-attachments/assets/f85d4bd0-c25e-4a21-a6ef-8dc7d3bc113e" controls></video> |
-| Prompt 79 | <video src="https://github.com/user-attachments/assets/f120d700-705a-4f6e-b3d4-6a6a366fcb11" controls></video> | <video src="https://github.com/user-attachments/assets/159bdcd8-bcc4-443d-a495-5248934cf107" controls></video> |
-| Prompt 92 | <video src="https://github.com/user-attachments/assets/ca31699f-2b69-422d-9936-2a2a6f981aa4" controls></video> | <video src="https://github.com/user-attachments/assets/4f30969c-b979-4981-80b4-b8244bf207e2" controls></video> |
-| Prompt 99 | <video src="https://github.com/user-attachments/assets/953e3132-878b-40e7-a796-792165de42e5" controls></video> | <video src="https://github.com/user-attachments/assets/edaae47a-de4f-40cc-b469-b46bd78967d1" controls></video> |
-| Prompt 108 | <video src="https://github.com/user-attachments/assets/f3e2ead0-4efa-4ea0-b45e-3f9375d52a97" controls></video> | <video src="https://github.com/user-attachments/assets/d319b7d9-f1d7-4cb9-ad20-b7ab53799321" controls></video> |
-| Prompt 165 | <video src="https://github.com/user-attachments/assets/ba604224-0a66-4229-a93b-a70cb9b82763" controls></video> | <video src="https://github.com/user-attachments/assets/e98289ce-01ed-4a10-b5f0-4815b973a212" controls></video> |
+| Prompt 5 | <video src="https://github.com/user-attachments/assets/45db5c23-fbaa-4c71-bc51-c1785a6c87eb" controls></video> | <video src="https://github.com/user-attachments/assets/30784eb1-634a-4eee-a718-3961f7077e72" controls></video> |
+| Prompt 6 | <video src="https://github.com/user-attachments/assets/03c7ceb9-a557-40ef-a8c9-984f790ae893" controls></video> | <video src="https://github.com/user-attachments/assets/408dcc48-8c83-42ee-8008-fd362d2b752d" controls></video> |
+| Prompt 73 | <video src="https://github.com/user-attachments/assets/abfcc196-530b-472d-99a0-0f1c1c9126e6" controls></video> | <video src="https://github.com/user-attachments/assets/f85d4bd0-c25e-4a21-a6ef-8dc7d3bc113e" controls></video> |
+| Prompt 79 | <video src="https://github.com/user-attachments/assets/0b3a7855-a4e8-484f-9f0c-6221d4306099" controls></video> | <video src="https://github.com/user-attachments/assets/159bdcd8-bcc4-443d-a495-5248934cf107" controls></video> |
+| Prompt 92 | <video src="https://github.com/user-attachments/assets/f9d8e1f4-d5a6-4c4e-b697-cf569e03b4b4" controls></video> | <video src="https://github.com/user-attachments/assets/4f30969c-b979-4981-80b4-b8244bf207e2" controls></video> |
+| Prompt 99 | <video src="https://github.com/user-attachments/assets/b5b4c3fc-b139-4fa4-ab25-d69f2c343e0c" controls></video> | <video src="https://github.com/user-attachments/assets/edaae47a-de4f-40cc-b469-b46bd78967d1" controls></video> |
+| Prompt 108 | <video src="https://github.com/user-attachments/assets/d8a5d98c-53e7-4725-8c3e-d8c6caa34b43" controls></video> | <video src="https://github.com/user-attachments/assets/d319b7d9-f1d7-4cb9-ad20-b7ab53799321" controls></video> |
+| Prompt 165 | <video src="https://github.com/user-attachments/assets/621486c1-d56d-4be5-9a83-0f5baeaab3d1" controls></video> | <video src="https://github.com/user-attachments/assets/e98289ce-01ed-4a10-b5f0-4815b973a212" controls></video> |
 
 ## 1. Set Up The Environment
 
