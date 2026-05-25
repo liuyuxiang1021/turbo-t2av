@@ -223,16 +223,6 @@ class Trainer:
         # FSDP wrapping
         self._wrap_with_fsdp()
 
-        # Force FSDP lazy init on all wrapped modules now, so benchmark
-        # forward calls do not race on internal FSDP state sharing.
-        # Without this, the teacher reference (real_score) crashes
-        # with "_is_root should not have been set yet" when it is
-        # the second FSDP-wrapped module to run its first forward.
-        _ = self.dmd.generator.training
-        _ = self.dmd.real_score.training
-        if self.dmd.fake_score is not None:
-            _ = self.dmd.fake_score.training
-
         # Optimizers
         weight_decay = getattr(config, "weight_decay", 0.0)
         generator_lr = getattr(config, "generator_lr", config.lr)
@@ -1620,16 +1610,73 @@ class Trainer:
 
     @torch.no_grad()
     def _run_teacher_reference_and_log(self):
+        teacher_runs = [
+            (
+                self.teacher_benchmark_mode,
+                None,
+                os.path.join(self.output_path, "benchmark", "teacher"),
+                "benchmark_teacher",
+                "Teacher",
+            )
+        ]
+        if self.teacher_benchmark_include_native_rf_reference and self.teacher_benchmark_mode != "native_rf":
+            teacher_runs.append(
+                (
+                    "native_rf",
+                    self.teacher_benchmark_num_inference_steps,
+                    os.path.join(self.output_path, "benchmark", "teacher_native_rf"),
+                    "benchmark_teacher_native_rf",
+                    "Teacher-NativeRF",
+                )
+            )
         if self.teacher_benchmark_include_40step_reference:
+            teacher_runs.append(
+                (
+                    "native_rf",
+                    self.teacher_benchmark_40step_num_inference_steps,
+                    os.path.join(self.output_path, "benchmark", "teacher_40_step"),
+                    "benchmark_teacher_40step",
+                    "Teacher-40Step",
+                    "euler",  # deterministic Euler for quality anchor
+                )
+            )
+
+        for mode, num_steps_override, ref_dir, wandb_prefix, label, *rest in teacher_runs:
+            step_mode = rest[0] if rest else "re_corrupt"
             self._run_reference_and_log_single(
                 model="teacher",
-                mode="native_rf",
-                num_steps_override=self.teacher_benchmark_40step_num_inference_steps,
-                ref_dir=os.path.join(self.output_path, "benchmark", "teacher_40_step"),
-                wandb_prefix="benchmark_teacher_40step",
-                label="Teacher-40Step",
-                step_mode="euler",
+                mode=mode,
+                num_steps_override=num_steps_override,
+                ref_dir=ref_dir,
+                wandb_prefix=wandb_prefix,
+                label=label,
+                step_mode=step_mode,
             )
+
+        # Teacher no-CFG reference: same as teacher but CFG=1.0.
+        # Should match student_ref (both no CFG, same weights at step 0).
+        self._run_reference_and_log_single(
+            model="teacher",
+            mode=self.teacher_benchmark_mode,
+            num_steps_override=None,
+            ref_dir=os.path.join(self.output_path, "benchmark", "teacher_nocfg"),
+            wandb_prefix="benchmark_teacher_nocfg",
+            label="Teacher-NoCFG",
+            cfg_override=1.0,
+        )
+
+        # Student reference at step 0. For SCM/rCM guidance distillation the
+        # student is evaluated conditional-only by default, matching rCM
+        # generation instead of applying CFG a second time.
+        self._run_reference_and_log_single(
+            model="student",
+            mode=self.teacher_benchmark_mode,
+            num_steps_override=None,
+            ref_dir=os.path.join(self.output_path, "benchmark", "student_ref"),
+            wandb_prefix="benchmark_student_ref",
+            label="Student-Ref",
+            cfg_override=1.0,
+        )
 
     @torch.no_grad()
     def _run_reference_and_log_single(
