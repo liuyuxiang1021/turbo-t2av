@@ -165,13 +165,6 @@ NUM_GPUS=8 MASTER_PORT=29603 \
 ./scripts/train_rcm.sh
 ```
 
-For multi-node jobs, use the same variables accepted by `torchrun`:
-
-```bash
-NNODES=4 NODE_RANK=0 MASTER_ADDR=10.0.0.1 NUM_GPUS=8 \
-./scripts/train_rcm.sh
-```
-
 ## 5. Run Inference
 
 Single-GPU inference is kept in the original project layout:
