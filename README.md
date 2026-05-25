@@ -5,7 +5,6 @@
 <a href="https://github.com/liuyuxiang1021/TurboT2AV"><img src="https://img.shields.io/badge/GitHub-TurboT2AV-blue.svg" alt="GitHub"></a>
 
 </div>
-## Demo
 
 | Prompt | Teacher (50-step) | SCM+DMD (4-step) |
 |:---|:---:|:---:|
