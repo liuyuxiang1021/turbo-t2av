@@ -95,6 +95,7 @@ def _entry_from_payload(payload: dict, manifest_dir: Path, item_desc: str) -> Ma
         payload.get("video_path")
         or payload.get("media_path")
         or payload.get("video")
+        or payload.get("video_id")
         or payload.get("path")
     )
     if not prompt:
@@ -907,6 +908,15 @@ def parse_args() -> argparse.Namespace:
         help="Directory containing the video files referenced by --captions_path.",
     )
     parser.add_argument(
+        "--mapping_csv",
+        default=None,
+        help=(
+            "CSV file with columns (video_id, prompt). "
+            "video_id gives the filename under --video_dir. "
+            "Use together with --video_dir."
+        ),
+    )
+    parser.add_argument(
         "--output_lmdb",
         default="/path/to/scm_latent_lmdb",
         help="Output LMDB path.",
@@ -941,16 +951,14 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
-    if args.manifest_path:
-        if args.captions_path or args.video_dir:
-            raise ValueError(
-                "Use either --manifest_path OR (--captions_path + --video_dir), not both."
-            )
-    else:
-        if not args.captions_path or not args.video_dir:
-            raise ValueError(
-                "Provide either --manifest_path, or both --captions_path and --video_dir."
-            )
+    has_manifest = bool(args.manifest_path)
+    has_captions = bool(args.captions_path and args.video_dir)
+    has_mapping = bool(args.mapping_csv and args.video_dir)
+    if sum([has_manifest, has_captions, has_mapping]) != 1:
+        raise ValueError(
+            "Provide exactly one input source: --manifest_path, "
+            "(--captions_path + --video_dir), or (--mapping_csv + --video_dir)."
+        )
 
     if not _is_valid_frame_count(args.num_frames):
         raise ValueError(
@@ -983,6 +991,22 @@ def main() -> None:
     dtype = _parse_dtype(args.dtype)
     if args.manifest_path:
         entries = _load_manifest(args.manifest_path, args.max_samples)
+    elif args.mapping_csv:
+        entries = _load_manifest(args.mapping_csv, args.max_samples)
+        # mapping_csv has relative filenames — resolve against video_dir
+        video_dir = Path(args.video_dir).expanduser().resolve()
+        resolved = []
+        for e in entries:
+            if not Path(e.video_path).is_absolute():
+                e = ManifestEntry(
+                    prompt=e.prompt,
+                    video_path=str(video_dir / e.video_path),
+                    audio_path=e.audio_path,
+                    source_index=e.source_index,
+                    video_name=e.video_name or Path(e.video_path).name,
+                )
+            resolved.append(e)
+        entries = resolved
     else:
         entries = _load_entries_from_video_dir(args.captions_path, args.video_dir, args.max_samples)
     entries = _filter_entries_by_source_index(entries, args.source_index_start, args.source_index_end)
