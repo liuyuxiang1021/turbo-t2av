@@ -71,7 +71,7 @@ print(str(cfg.get("output_path", "")))
 PY
 }
 
-OUTPUT_ROOT="${OUTPUT_PATH:-$(read_output_path "${DCM_CONFIG}")}"
+OUTPUT_ROOT="${OUTPUT_PATH:-${TURBO_OUTPUT_PATH:-$(read_output_path "${DCM_CONFIG}")}}"
 if [ -z "${OUTPUT_ROOT}" ]; then
     echo "[error] output_path is empty; set OUTPUT_PATH or configure ${DCM_CONFIG}" >&2
     exit 2
