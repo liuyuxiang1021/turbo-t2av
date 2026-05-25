@@ -5,6 +5,7 @@
 <a href="https://github.com/liuyuxiang1021/TurboT2AV"><img src="https://img.shields.io/badge/GitHub-TurboT2AV-blue.svg" alt="GitHub"></a>
 
 </div>
+
 | Prompt | Teacher | SCM+DMD |
 |:---|:---:|:---:|
 | The woman with long brown hair and wearing white pants and a white jacket is per... | <video src="https://github.com/user-attachments/assets/45db5c23-fbaa-4c71-bc51-c1785a6c87eb" width="320" controls></video> | <video src="https://github.com/user-attachments/assets/30784eb1-634a-4eee-a718-3961f7077e72" width="320" controls></video> |
