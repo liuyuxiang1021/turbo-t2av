@@ -7,7 +7,9 @@ VIDEO_DIR="${2:?}"
 CKPT="${3:?}"
 OUTPUT="${4:?}"
 NUM_GPUS="${NUM_GPUS:-8}"
-WORKERS="${NUM_WORKERS:-4}"
+WORKERS="${NUM_WORKERS:-32}"
+
+mkdir -p "$OUTPUT"
 
 for i in $(seq 0 $((NUM_GPUS - 1))); do
   CUDA_VISIBLE_DEVICES=$i \
