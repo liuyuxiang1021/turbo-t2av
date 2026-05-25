@@ -8,7 +8,6 @@
 
 ## TurboT2AV — Consistency Distillation Demos
 
-DCM warmup → SCM → SCM+DMD on LTX-2 19B AV. [Full gallery →](https://liuyuxiang1021.github.io/TurboT2AV.github.io/)
 
 | Prompt | DCM500 | SCM1000 | DMD-only | SCM+DMD |
 |:---|:---:|:---:|:---:|:---:|
