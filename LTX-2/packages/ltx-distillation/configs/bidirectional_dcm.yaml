@@ -60,9 +60,11 @@ mixed_precision: true
 gradient_checkpointing: true
 batch_size: 1
 
-lr: 2.0e-06
-generator_lr: 2.0e-06
-critic_lr: 2.0e-05
+lr: 1.0e-05
+generator_lr: 1.0e-05
+generator_adaln_lr: 3.0e-06
+generator_output_scale_shift_lr: 1.0e-06
+critic_lr: 2.0e-06
 
 beta1: 0.9
 beta2: 0.999
