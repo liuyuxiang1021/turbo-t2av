@@ -153,6 +153,7 @@ else
         DCM_CKPT="${DCM_CHECKPOINT}"
     else
         dcm_env=(
+            "PYTHONUNBUFFERED=1"
             "RUN_DIR_NAME=${DCM_RUN_DIR}"
             "MAX_STEPS=${DCM_STEPS}"
             "CHECKPOINT_ITERS=${DCM_CHECKPOINT_ITERS:-${DCM_STEPS}}"
