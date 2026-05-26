@@ -97,7 +97,8 @@ fake_score_fsdp_wrap_strategy: size
 text_encoder_fsdp_wrap_strategy: size
 
 output_path: /path/to/outputs
-log_iters: 200
+log_iters: 1
+train_log_all_scalars: true
 
 wandb_project: TurboT2AV
 wandb_entity: ""
