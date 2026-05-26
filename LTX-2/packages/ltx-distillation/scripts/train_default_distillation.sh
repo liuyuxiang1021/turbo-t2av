@@ -2,6 +2,7 @@
 # Default TurboT2AV recipe: DCM 500 warmup -> SCM to 1000 -> full rCM.
 
 set -euo pipefail
+export PYTHONUNBUFFERED=1
 
 usage() {
     cat <<'EOF'
