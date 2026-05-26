@@ -70,13 +70,13 @@ lr: 2.0e-05
 generator_lr: 2.0e-05
 critic_lr: 2.0e-05
 
-beta1: 0.9
+beta1: 0.0
 beta2: 0.999
 weight_decay: 0.01
 dfake_gen_update_ratio: 1
-max_grad_norm: 3.0
+max_grad_norm: 99999.0
 
-scheduler_type: constant
+scheduler_type: cosine_warmup
 max_steps: 1000
 
 data_path: /path/to/dataset/prompts.txt
@@ -112,7 +112,7 @@ wandb_api_key: ""
 seed: 42
 
 benchmark_enabled: true
-benchmark_iters: 100
+benchmark_iters: 50
 benchmark_num_prompts: 8
 benchmark_seed: 12345
 benchmark_video_fps: 24

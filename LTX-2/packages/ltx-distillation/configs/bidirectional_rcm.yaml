@@ -68,13 +68,13 @@ lr: 2.0e-05
 generator_lr: 2.0e-05
 critic_lr: 2.0e-05
 
-beta1: 0.9
+beta1: 0.0
 beta2: 0.999
 weight_decay: 0.01
 dfake_gen_update_ratio: 5
-max_grad_norm: 3.0
+max_grad_norm: 99999.0
 
-scheduler_type: constant
+scheduler_type: cosine_warmup
 
 data_path: /path/to/dataset/prompts.txt
 backward_simulation: true
