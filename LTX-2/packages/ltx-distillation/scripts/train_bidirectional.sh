@@ -229,7 +229,7 @@ echo "Logging:       ${LOG_FILE}"
 echo "========================================================"
 
 if [ "${DRY_RUN:-0}" = "1" ]; then
-    echo "DRY_RUN=1, torchrun command was not executed."
+    echo "DRY_RUN=1, distributed training command was not executed."
     exit 0
 fi
 
@@ -237,7 +237,7 @@ if [ -n "${RUN_OUTPUT_PATH:-}" ]; then
     mkdir -p "$RUN_OUTPUT_PATH"
 fi
 
-torchrun \
+"${PYTHON_BIN}" -m torch.distributed.run \
     --nnodes="${NNODES}" \
     --nproc_per_node="${NPROC_PER_NODE}" \
     --node_rank="${NODE_RANK}" \
