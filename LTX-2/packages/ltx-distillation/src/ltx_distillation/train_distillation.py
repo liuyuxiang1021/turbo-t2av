@@ -223,6 +223,13 @@ class Trainer:
         # FSDP wrapping
         self._wrap_with_fsdp()
 
+        # Prime FSDP lazy-init on all wrapped models to avoid a race during
+        # benchmark/training when multiple FSDP modules run their first forward.
+        _ = self.dmd.generator.training
+        _ = self.dmd.real_score.training
+        if self.dmd.fake_score is not None:
+            _ = self.dmd.fake_score.training
+
         # Optimizers
         weight_decay = getattr(config, "weight_decay", 0.0)
         generator_lr = getattr(config, "generator_lr", config.lr)
