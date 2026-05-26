@@ -342,8 +342,14 @@ class Trainer:
                             f" (completed_step={completed_step}); training state reset"
                         )
             finally:
-                del ckpt
-                gc.collect()
+                # Keep mmap-backed checkpoint storages alive after load_state_dict().
+                # Releasing the large mmap immediately after FSDP state loading can
+                # segfault in native code on some PyTorch/CUDA builds.
+                if bool(getattr(config, "release_resume_checkpoint_after_load", False)):
+                    del ckpt
+                    gc.collect()
+                else:
+                    self._resume_checkpoint_ref = ckpt
                 torch.cuda.empty_cache()
                 barrier()
 
@@ -528,13 +534,20 @@ class Trainer:
             if isinstance(submodule, FSDP) and hasattr(submodule, "_reset_lazy_init"):
                 submodule._reset_lazy_init()
 
-    def _reset_training_fsdp_lazy_init(self):
+    def _reset_training_fsdp_lazy_init(self, *modules):
         """Let the next training forward re-establish a clean FSDP root tree."""
-        self._reset_fsdp_lazy_init(self.dmd.generator)
-        self._reset_fsdp_lazy_init(self.dmd.real_score)
-        self._reset_fsdp_lazy_init(self.dmd.fake_score)
-        self._reset_fsdp_lazy_init(self.dmd.text_encoder)
+        for module in modules:
+            self._reset_fsdp_lazy_init(module)
         barrier()
+
+    def _clear_benchmark_cuda_state(self):
+        """Synchronize and release benchmark-only CUDA state before training."""
+        if torch.cuda.is_available():
+            torch.cuda.synchronize(self.device)
+            torch.cuda.empty_cache()
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
     def _wrap_with_fsdp(self):
         """Wrap models with FSDP for distributed training."""
@@ -1464,6 +1477,7 @@ class Trainer:
         # native LTX scheduler converted after the fact.
         benchmark_sigmas = self.dmd.denoising_sigmas.to(device=self.device, dtype=self.dtype)
 
+        pipeline = None
         try:
             if self.benchmark_mode == "causal":
                 pipeline = CausalAVInferencePipeline(
@@ -1546,6 +1560,8 @@ class Trainer:
                 del ema_state
             if was_training:
                 self.dmd.generator.train()
+            del pipeline
+            self._clear_benchmark_cuda_state()
 
         benchmark_wall_elapsed = time.perf_counter() - benchmark_wall_start
 
@@ -1557,6 +1573,7 @@ class Trainer:
         total_generate_seconds = total_generate_tensor.item()
 
         self._vae_to_cpu()
+        self._clear_benchmark_cuda_state()
 
         barrier()
 
@@ -1598,7 +1615,11 @@ class Trainer:
             )
 
         barrier()
-        self._reset_training_fsdp_lazy_init()
+        self._reset_training_fsdp_lazy_init(
+            self.dmd.generator,
+            self.dmd.real_score,
+            self.dmd.text_encoder,
+        )
 
     @torch.no_grad()
     def _run_teacher_reference_and_log(self):
@@ -1728,6 +1749,7 @@ class Trainer:
                 net.train()
             if was_text_encoder_training:
                 self.dmd.text_encoder.train()
+            self._clear_benchmark_cuda_state()
 
         wall_elapsed = time.perf_counter() - wall_start
 
@@ -1738,6 +1760,7 @@ class Trainer:
         total_generate_seconds = total_generate_tensor.item()
 
         self._vae_to_cpu()
+        self._clear_benchmark_cuda_state()
         barrier()
 
         if self.is_main_process:

@@ -55,7 +55,7 @@ if [ -z "${PYTHON_BIN:-}" ]; then
 fi
 
 DCM_STEPS="${DCM_STEPS:-500}"
-SCM_STEPS="${SCM_STEPS:-1000}"
+SCM_STEPS="${SCM_STEPS:-500}"
 DCM_CONFIG="${DCM_CONFIG:-configs/bidirectional_dcm.yaml}"
 SCM_CONFIG="${SCM_CONFIG:-configs/bidirectional_scm.yaml}"
 RCM_CONFIG="${RCM_CONFIG:-configs/bidirectional_rcm.yaml}"
