@@ -62,7 +62,7 @@ scm_time_eps: 1.0e-4
 mixed_precision: true
 gradient_checkpointing: true
 batch_size: 1
-checkpoint_iters: 1000
+checkpoint_iters: 500
 skip_initial_checkpoint: true
 
 lr: 2.0e-05
@@ -121,4 +121,3 @@ teacher_benchmark_audio_guidance_scale: 5.0
 scm_tangent_clip_mean: 20.0
 reverse_scm_data_order: true
 max_steps: 30000
-checkpoint_iters: 500
