@@ -75,9 +75,10 @@ weight_decay: 0.01
 dfake_gen_update_ratio: 5
 separate_generator_critic_phases: true
 share_scm_dmd_batch: true
-max_grad_norm: 99999.0
+max_grad_norm: 3.0
 
-scheduler_type: cosine_warmup
+scheduler_type: constant
+warmup_steps: 0
 
 data_path: /path/to/dataset/prompts.txt
 backward_simulation: true
@@ -117,3 +118,7 @@ student_benchmark_use_cfg: false
 teacher_benchmark_enabled: true
 teacher_benchmark_video_guidance_scale: 3.0
 teacher_benchmark_audio_guidance_scale: 5.0
+scm_tangent_clip_mean: 20.0
+reverse_scm_data_order: true
+max_steps: 30000
+checkpoint_iters: 500
