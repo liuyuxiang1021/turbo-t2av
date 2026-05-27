@@ -206,9 +206,11 @@ PYTHONPATH=packages/ltx-distillation/src:$PYTHONPATH \
   --num_prompts 8
 ```
 
+`--prompts_file` supports the same CSV format as training (`video_id,prompt`) or plain text (one prompt per line).
+
 ## 5. Run Evaluation
 
-TBA. The repository currently keeps training and single-GPU inference entrypoints. A formal evaluation script and metric workflow still need to be added.
+(TODO) A formal evaluation script and metric workflow still need to be added.
 
 ## Repository Structure
 
