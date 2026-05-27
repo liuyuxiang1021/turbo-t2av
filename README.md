@@ -110,11 +110,11 @@ Download the required model weights from HuggingFace:
 ```bash
 export HF_TOKEN="your_huggingface_token"
 
-huggingface-cli download Lightricks/LTX-2 \
+hf download Lightricks/LTX-2 \
     ltx-2-19b-dev.safetensors \
     --local-dir /path/to/checkpoints/LTX-2
 
-huggingface-cli download google/gemma-3-12b-it-qat-q4_0-unquantized \
+hf download google/gemma-3-12b-it-qat-q4_0-unquantized \
     --local-dir /path/to/checkpoints/gemma-3-12b-it-qat-q4_0-unquantized
 ```
 
