@@ -174,11 +174,13 @@ The recipe produces three checkpoint directories under `output_path`:
 
 ## 4. Run Inference
 
+Uses the same environment variables as training (Section 3). Make sure `TURBO_CHECKPOINT_PATH` and `TURBO_GEMMA_PATH` are set.
+
 ### Teacher (40-step reference)
 
 ```bash
 cd LTX-2
-PYTHONPATH=packages/ltx-distillation/src:$PYTHONPATH \
+PYTHONPATH=packages/ltx-distillation/src:packages/ltx-core/src:packages/ltx-pipelines/src:$PYTHONPATH \
   CUDA_VISIBLE_DEVICES=0 \
   pixi run python -m ltx_distillation.tools.run_av_inference_eval \
   --config_path packages/ltx-distillation/configs/bidirectional_rcm.yaml \
@@ -194,7 +196,7 @@ PYTHONPATH=packages/ltx-distillation/src:$PYTHONPATH \
 
 ```bash
 cd LTX-2
-PYTHONPATH=packages/ltx-distillation/src:$PYTHONPATH \
+PYTHONPATH=packages/ltx-distillation/src:packages/ltx-core/src:packages/ltx-pipelines/src:$PYTHONPATH \
   CUDA_VISIBLE_DEVICES=0 \
   pixi run python -m ltx_distillation.tools.run_av_inference_eval \
   --config_path packages/ltx-distillation/configs/bidirectional_rcm.yaml \
