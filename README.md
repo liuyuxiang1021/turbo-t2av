@@ -174,7 +174,12 @@ The recipe produces three checkpoint directories under `output_path`:
 
 ## 4. Run Inference
 
-Uses the same environment variables as training (Section 3). Make sure `TURBO_CHECKPOINT_PATH` and `TURBO_GEMMA_PATH` are set.
+Set the same environment variables as training before running inference:
+
+```bash
+export TURBO_CHECKPOINT_PATH=/path/to/ltx-2-19b-dev.safetensors
+export TURBO_GEMMA_PATH=/path/to/gemma-3-12b-it-qat-q4_0-unquantized
+```
 
 ### Teacher (40-step reference)
 
