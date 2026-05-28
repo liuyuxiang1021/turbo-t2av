@@ -11,8 +11,6 @@ Fast text-to-audio-video generation distilled from LTX-2 19B.
 TurboT2AV generates synchronized audio-video from text prompts in 4 steps.
 This repository provides single-GPU inference for the distilled checkpoint.
 
-Demo videos are linked from [GitHub issue #1](https://github.com/liuyuxiang1021/turbo-t2av/issues/1).
-
 <table>
   <thead>
     <tr>
