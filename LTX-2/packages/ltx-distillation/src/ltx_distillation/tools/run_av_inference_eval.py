@@ -392,6 +392,17 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     cfg = OmegaConf.load(args.config_path)
+    # Override paths from environment (same as training)
+    import os as _os
+    for key, env in [
+        ("checkpoint_path", "TURBO_CHECKPOINT_PATH"),
+        ("gemma_path", "TURBO_GEMMA_PATH"),
+        ("data_path", "TURBO_DATA_PATH"),
+        ("scm_data_path", "TURBO_SCM_DATA_PATH"),
+        ("output_path", "TURBO_OUTPUT_PATH"),
+    ]:
+        if _os.environ.get(env):
+            cfg[key] = _os.environ[env]
 
     if args.model_kind == "student" and not args.student_checkpoint:
         raise ValueError("--student_checkpoint is required for --model_kind student")
