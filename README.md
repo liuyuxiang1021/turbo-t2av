@@ -11,6 +11,8 @@ Fast text-to-audio-video generation distilled from LTX-2 19B.
 TurboT2AV generates synchronized audio-video from text prompts in 4 steps.
 The demo compares the 40-step teacher with the 4-step student.
 This repository provides single-GPU inference for the distilled checkpoint.
+On an NVIDIA H20, single-sample inference takes about 50 seconds for the
+40-step teacher and about 2.5 seconds for the 4-step student.
 Training code and the full data-processing pipeline are coming soon.
 
 Main contributions:
