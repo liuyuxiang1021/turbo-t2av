@@ -32,38 +32,38 @@ Main contributions:
   <tbody>
     <tr>
       <td width="34%">The woman with long brown hair and wearing white pants and a white jacket is performing on stage, singing into a microphone. As she sings, her voice is accompanied by background music, showcasing her talent as a female vocalist.</td>
-      <td align="center" width="33%"><video src="assets/videos/demo/teacher_p5.mp4" alt="teacher_p5" width="320" controls></video></td>
-      <td align="center" width="33%"><video src="assets/videos/demo/student_p5.mp4" alt="student_p5" width="320" controls></video></td>
+      <td align="center" width="33%"><a href="assets/videos/demo/teacher_p5.mp4"><img src="assets/videos/demo/gif/teacher_p5.gif" alt="teacher_p5" width="320"></a></td>
+      <td align="center" width="33%"><a href="assets/videos/demo/student_p5.mp4"><img src="assets/videos/demo/gif/student_p5.gif" alt="student_p5" width="320"></a></td>
     </tr>
     <tr>
       <td width="34%">The man is seen sitting and playing an acoustic guitar in front of a green shirt hanging on a white wall, the sound of the guitar being strummed and finger-picked with various chords and melodies fills the air.</td>
-      <td align="center" width="33%"><video src="assets/videos/demo/teacher_p6.mp4" alt="teacher_p6" width="320" controls></video></td>
-      <td align="center" width="33%"><video src="assets/videos/demo/student_p6.mp4" alt="student_p6" width="320" controls></video></td>
+      <td align="center" width="33%"><a href="assets/videos/demo/teacher_p6.mp4"><img src="assets/videos/demo/gif/teacher_p6.gif" alt="teacher_p6" width="320"></a></td>
+      <td align="center" width="33%"><a href="assets/videos/demo/student_p6.mp4"><img src="assets/videos/demo/gif/student_p6.gif" alt="student_p6" width="320"></a></td>
     </tr>
     <tr>
       <td width="34%">As the man speaks, the soothing sound of birds flapping their wings fills the background. In the video, a close-up of an animal surrounded by lush, green grass in a peaceful field is shown. The animal appears calm and observes its natural surroundings, creating a serene and tranquil scene.</td>
-      <td align="center" width="33%"><video src="assets/videos/demo/teacher_p73.mp4" alt="teacher_p73" width="320" controls></video></td>
-      <td align="center" width="33%"><video src="assets/videos/demo/student_p73.mp4" alt="student_p73" width="320" controls></video></td>
+      <td align="center" width="33%"><a href="assets/videos/demo/teacher_p73.mp4"><img src="assets/videos/demo/gif/teacher_p73.gif" alt="teacher_p73" width="320"></a></td>
+      <td align="center" width="33%"><a href="assets/videos/demo/student_p73.mp4"><img src="assets/videos/demo/gif/student_p73.gif" alt="student_p73" width="320"></a></td>
     </tr>
     <tr>
       <td width="34%">Pigeons are cooing and flapping their wings while the wind blows and traffic passes by. In the video, a flock of white and black pigeons can be seen standing closely together. The pigeons appear calm and seem to be pecking at the ground for food. The birds vary in color, with some being predominantly white and others predominantly black. They are standing in a public area, possibly a park or square. The pigeons exhibit typical behaviors such as grooming themselves and fluttering their wings. Overall, the scene captures a peaceful coexistence between the white and black pigeons.</td>
-      <td align="center" width="33%"><video src="assets/videos/demo/teacher_p79.mp4" alt="teacher_p79" width="320" controls></video></td>
-      <td align="center" width="33%"><video src="assets/videos/demo/student_p79.mp4" alt="student_p79" width="320" controls></video></td>
+      <td align="center" width="33%"><a href="assets/videos/demo/teacher_p79.mp4"><img src="assets/videos/demo/gif/teacher_p79.gif" alt="teacher_p79" width="320"></a></td>
+      <td align="center" width="33%"><a href="assets/videos/demo/student_p79.mp4"><img src="assets/videos/demo/gif/student_p79.gif" alt="student_p79" width="320"></a></td>
     </tr>
     <tr>
       <td width="34%">The sound of a truck accelerating can be heard, along with the sound of its tires squealing as it speeds up. A man is seen standing next to a garbage truck parked in front of a house on a driveway.</td>
-      <td align="center" width="33%"><video src="assets/videos/demo/teacher_p92.mp4" alt="teacher_p92" width="320" controls></video></td>
-      <td align="center" width="33%"><video src="assets/videos/demo/student_p92.mp4" alt="student_p92" width="320" controls></video></td>
+      <td align="center" width="33%"><a href="assets/videos/demo/teacher_p92.mp4"><img src="assets/videos/demo/gif/teacher_p92.gif" alt="teacher_p92" width="320"></a></td>
+      <td align="center" width="33%"><a href="assets/videos/demo/student_p92.mp4"><img src="assets/videos/demo/gif/student_p92.gif" alt="student_p92" width="320"></a></td>
     </tr>
     <tr>
       <td width="34%">The man wearing a camouflage shirt and hat sits in front of a sign as he speaks for a few minutes before a horn is blown, interrupting him.</td>
-      <td align="center" width="33%"><video src="assets/videos/demo/teacher_p99.mp4" alt="teacher_p99" width="320" controls></video></td>
-      <td align="center" width="33%"><video src="assets/videos/demo/student_p99.mp4" alt="student_p99" width="320" controls></video></td>
+      <td align="center" width="33%"><a href="assets/videos/demo/teacher_p99.mp4"><img src="assets/videos/demo/gif/teacher_p99.gif" alt="teacher_p99" width="320"></a></td>
+      <td align="center" width="33%"><a href="assets/videos/demo/student_p99.mp4"><img src="assets/videos/demo/gif/student_p99.gif" alt="student_p99" width="320"></a></td>
     </tr>
     <tr>
       <td width="34%">The speaker is a woman, wearing a pink top with a butterfly design on the chest, stands in front of a camera.</td>
-      <td align="center" width="33%"><video src="assets/videos/demo/teacher_p165.mp4" alt="teacher_p165" width="320" controls></video></td>
-      <td align="center" width="33%"><video src="assets/videos/demo/student_p165.mp4" alt="student_p165" width="320" controls></video></td>
+      <td align="center" width="33%"><a href="assets/videos/demo/teacher_p165.mp4"><img src="assets/videos/demo/gif/teacher_p165.gif" alt="teacher_p165" width="320"></a></td>
+      <td align="center" width="33%"><a href="assets/videos/demo/student_p165.mp4"><img src="assets/videos/demo/gif/student_p165.gif" alt="student_p165" width="320"></a></td>
     </tr>
   </tbody>
 </table>
