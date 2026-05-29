@@ -78,7 +78,7 @@ pixi run pip install -e packages/ltx-distillation
 If this project is used as a folder inside TurboDiffusion, start from:
 
 ```bash
-cd TurboDiffusion/TurboT2av/LTX-2
+cd TurboDiffusion/TurboT2AV/LTX-2
 ```
 
 ## 2. Download Weights
