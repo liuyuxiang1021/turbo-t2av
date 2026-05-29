@@ -66,7 +66,7 @@ dfake_gen_update_ratio: 3
 max_grad_norm: 99999.0
 scheduler_type: cosine_warmup
 warmup_steps: 0
-max_steps: 800
+max_steps: 5000
 min_lr: 1.0e-05
 
 ema_enabled: false
