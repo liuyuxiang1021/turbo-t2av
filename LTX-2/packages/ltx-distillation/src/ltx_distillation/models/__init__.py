@@ -1,6 +1,4 @@
-"""
-Model wrappers for LTX-2 DMD distillation.
-"""
+"""Model wrappers for TurboT2AV inference."""
 
 from ltx_distillation.models.ltx_wrapper import LTX2DiffusionWrapper
 from ltx_distillation.models.text_encoder_wrapper import GemmaTextEncoderWrapper

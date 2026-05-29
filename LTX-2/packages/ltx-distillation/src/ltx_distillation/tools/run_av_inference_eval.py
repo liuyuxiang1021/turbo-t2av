@@ -1,9 +1,4 @@
-"""Standalone AV inference runner for JavisBench-style evaluation.
-
-This tool intentionally mirrors the training-time benchmark path while avoiding
-the training loop.  It saves dense ``sample_0000.mp4`` and ``sample_0000.wav``
-files so ``eval.javisbench.main`` can consume the output directory directly.
-"""
+"""Standalone audio-video inference runner."""
 
 from __future__ import annotations
 
@@ -30,7 +25,39 @@ from ltx_distillation.models.ltx_wrapper import create_ltx2_wrapper
 from ltx_distillation.models.text_encoder_wrapper import create_text_encoder_wrapper
 from ltx_distillation.models.vae_wrapper import create_vae_wrappers
 from ltx_distillation.time_utils import rf_to_trig_time
-from ltx_distillation.train_distillation import compute_latent_shapes
+
+
+def compute_latent_shapes(
+    num_frames: int,
+    video_height: int,
+    video_width: int,
+    batch_size: int = 1,
+    latent_channels: int = 128,
+    vae_temporal_compression: int = 8,
+    vae_spatial_compression: int = 32,
+    video_fps: float = 24.0,
+    audio_sample_rate: int = 16000,
+    audio_hop_length: int = 160,
+    audio_latent_downsample: int = 4,
+) -> Tuple[list, list]:
+    """Compute LTX-2 video/audio latent shapes from output dimensions."""
+    if (num_frames - 1) % vae_temporal_compression != 0:
+        raise ValueError(
+            f"num_frames must be 1 + {vae_temporal_compression}*k, got {num_frames}."
+        )
+
+    latent_frames = 1 + (num_frames - 1) // vae_temporal_compression
+    latent_h = video_height // vae_spatial_compression
+    latent_w = video_width // vae_spatial_compression
+
+    video_duration = float(num_frames) / float(video_fps)
+    audio_latent_fps = float(audio_sample_rate) / float(audio_hop_length) / float(audio_latent_downsample)
+    audio_frames = round(video_duration * audio_latent_fps)
+
+    return (
+        [batch_size, latent_frames, latent_channels, latent_h, latent_w],
+        [batch_size, audio_frames, latent_channels],
+    )
 
 
 def _load_prompts(prompts_file: str, limit: int | None) -> list[str]:
@@ -392,14 +419,11 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     cfg = OmegaConf.load(args.config_path)
-    # Override paths from environment (same as training)
+    # Override model paths from environment.
     import os as _os
     for key, env in [
         ("checkpoint_path", "TURBO_CHECKPOINT_PATH"),
         ("gemma_path", "TURBO_GEMMA_PATH"),
-        ("data_path", "TURBO_DATA_PATH"),
-        ("scm_data_path", "TURBO_SCM_DATA_PATH"),
-        ("output_path", "TURBO_OUTPUT_PATH"),
     ]:
         if _os.environ.get(env):
             cfg[key] = _os.environ[env]

@@ -48,7 +48,7 @@ ignore = [
 max-args = 10
 
 [tool.ruff.lint.isort]
-known-first-party = ["ltx_core", "ltx_pipelines", "ltx_causal", "ltx_distillation"]
+known-first-party = ["ltx_core", "ltx_pipelines", "ltx_distillation"]
 
 [tool.pixi.workspace]
 name = "LTX-2"

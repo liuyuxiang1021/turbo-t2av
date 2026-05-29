@@ -76,10 +76,7 @@ models/*.pth
 # =============================================================================
 # Data Files (Large Files)
 # =============================================================================
-# LMDB databases
-*.lmdb
 *.mdb
-lmdb_data/
 
 # HDF5 and numpy
 *.h5
@@ -121,7 +118,6 @@ samples/
 # =============================================================================
 logs/
 *.log
-wandb/
 runs/
 tensorboard/
 mlruns/
@@ -248,25 +244,9 @@ flagged/
 *.pid
 
 # =============================================================================
-# Project Specific
-# =============================================================================
-# CausVid distillation data
-LTX-2/packages/CausVid/distillation_data/*.lmdb
-LTX-2/packages/CausVid/distillation_data/ode_pairs/
-
-# Self-Forcing checkpoints
-LTX-2/packages/Self-Forcing/checkpoints/
-
-# LightX2V results
-LightX2V/save_results/*
-
-# =============================================================================
 # Keep These (override ignores)
 # =============================================================================
 !.gitkeep
 !requirements*.txt
 !README*.md
 !LICENSE
-
-/pfs/yuming/code/realtime_long_video/turbo-t2av/turbo-t2av/LTX-2/packages/ltx-distillation/scripts/train_single_node.sh
-/pfs/yuming/code/realtime_long_video/turbo-t2av/turbo-t2av/LTX-2/packages/ltx-distillation/configs/ltx2_bidirectional_dmd.yaml

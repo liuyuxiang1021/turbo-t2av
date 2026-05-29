@@ -1,6 +1,4 @@
-"""
-VAE Wrappers for visualization and validation during DMD distillation.
-"""
+"""VAE wrappers for TurboT2AV inference output decoding."""
 
 from typing import Optional
 import torch
@@ -67,7 +65,7 @@ class VideoVAEWrapper(nn.Module):
             raise ValueError("Decoder not initialized")
 
         # Decoder expects [B, C, F, H, W].
-        # Our DMD code stores video as [B, F, C, H, W] where C=128.
+        # TurboT2AV stores video as [B, F, C, H, W] where C=128.
         # Detect this by checking if dim 2 (not dim 1) equals 128.
         if latent.dim() == 5 and latent.shape[2] == 128:
             # Input is [B, F, C, H, W], need to permute to [B, C, F, H, W]
@@ -127,7 +125,7 @@ class AudioVAEWrapper(nn.Module):
         """
         Decode audio latent to mel spectrogram.
 
-        The DMD pipeline produces audio latents in the transformer's sequence
+        TurboT2AV produces audio latents in the transformer's sequence
         format ``[B, T, C*F]`` (3D), but the ``AudioDecoder`` expects the VAE
         spatial format ``[B, C, T, F]`` (4D).  This method handles the
         conversion automatically using the decoder's ``z_channels`` and

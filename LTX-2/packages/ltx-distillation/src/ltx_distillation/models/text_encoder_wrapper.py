@@ -1,5 +1,5 @@
 """
-Gemma Text Encoder Wrapper for DMD distillation.
+Gemma text encoder wrapper for TurboT2AV inference.
 
 Provides a simple interface for text encoding without prompt enhancement.
 Just pure text -> context embedding conversion.
@@ -12,7 +12,7 @@ import torch.nn as nn
 
 class GemmaTextEncoderWrapper(nn.Module):
     """
-    Wrapper for Gemma text encoder to provide DMD-compatible interface.
+    Wrapper for Gemma text encoding.
 
     This wrapper:
     - Takes raw text prompts (no enhancement needed)

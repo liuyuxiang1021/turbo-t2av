@@ -1,150 +1,15 @@
-"""
-Bidirectional Audio-Video Trajectory Pipeline for DMD backward simulation.
-
-This pipeline generates denoising trajectories for backward simulation
-in DMD training. It runs the generator through multiple denoising steps
-and returns the intermediate states.
-"""
+"""Bidirectional audio-video inference pipeline."""
 
 from typing import Tuple, Dict, Any, Optional
 import torch
 import torch.nn as nn
 
 
-class BidirectionalAVTrajectoryPipeline:
-    """
-    Pipeline for generating audio-video denoising trajectories.
-
-    Used in DMD training for backward simulation:
-    1. Start from pure noise
-    2. Denoise through multiple steps using the generator
-    3. Return trajectory of intermediate states
-
-    The trajectory can be used to sample training inputs at different noise levels.
-    """
-
-    def __init__(
-        self,
-        generator: nn.Module,
-        add_noise_fn,
-        denoising_sigmas: torch.Tensor,
-        use_trigflow: bool = False,
-    ):
-        """
-        Args:
-            generator: LTX2DiffusionWrapper instance
-            add_noise_fn: Callable[[original, noise, sigma], noisy_sample]
-                         Flow matching noise addition: (1-sigma)*x0 + sigma*eps
-            denoising_sigmas: Tensor of sigma values for denoising steps
-        """
-        self.generator = generator
-        self.add_noise_fn = add_noise_fn
-        self.denoising_sigmas = denoising_sigmas
-        self.use_trigflow = use_trigflow
-
-    @staticmethod
-    def _trig_recorrupt(
-        clean: torch.Tensor,
-        noise: torch.Tensor,
-        trig_t: torch.Tensor,
-    ) -> torch.Tensor:
-        cos_t = torch.cos(trig_t).to(device=clean.device, dtype=clean.dtype)
-        sin_t = torch.sin(trig_t).to(device=clean.device, dtype=clean.dtype)
-        return cos_t * clean + sin_t * noise
-
-    @torch.no_grad()
-    def inference_with_trajectory(
-        self,
-        video_noise: torch.Tensor,
-        audio_noise: torch.Tensor,
-        conditional_dict: Dict[str, Any],
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-        Generate denoising trajectory from noise.
-
-        This implements consistency backward simulation:
-        At each step, predict x0 and then re-corrupt to the next noise level.
-
-        Args:
-            video_noise: Initial video noise [B, F_v, C, H, W]
-            audio_noise: Initial audio noise [B, F_a, C]
-            conditional_dict: Conditioning dictionary
-
-        Returns:
-            Tuple of:
-                - video_trajectory: [B, T, F_v, C, H, W] where T is num steps
-                - audio_trajectory: [B, T, F_a, C]
-        """
-        B = video_noise.shape[0]
-        F_v = video_noise.shape[1]
-        F_a = audio_noise.shape[1]
-        device = video_noise.device
-
-        video_trajectory = [video_noise]
-        audio_trajectory = [audio_noise]
-
-        noisy_video = video_noise
-        noisy_audio = audio_noise
-
-        # Iterate through denoising steps (except the last one which is t=0)
-        for i, sigma in enumerate(self.denoising_sigmas[:-1]):
-            # Prepare sigma tensors
-            video_sigma = sigma * torch.ones([B, F_v], device=device)
-            audio_sigma = sigma * torch.ones([B, F_a], device=device)
-
-            # Predict x0
-            pred_video, pred_audio = self.generator(
-                noisy_image_or_video=noisy_video,
-                conditional_dict=conditional_dict,
-                timestep=video_sigma,
-                noisy_audio=noisy_audio,
-                audio_timestep=audio_sigma,
-            )
-
-            # Get next sigma
-            next_sigma = self.denoising_sigmas[i + 1]
-
-            if next_sigma > 0:
-                fresh_noise_video = torch.randn_like(video_noise)
-                fresh_noise_audio = torch.randn_like(audio_noise)
-
-                if self.use_trigflow:
-                    noisy_video = self._trig_recorrupt(pred_video, fresh_noise_video, next_sigma)
-                    noisy_audio = self._trig_recorrupt(pred_audio, fresh_noise_audio, next_sigma)
-                else:
-                    next_video_sigma = next_sigma * torch.ones([B, F_v], device=device)
-                    next_audio_sigma = next_sigma * torch.ones([B, F_a], device=device)
-
-                    noisy_video = self.add_noise_fn(
-                        pred_video.flatten(0, 1),
-                        fresh_noise_video.flatten(0, 1),
-                        next_video_sigma.flatten(0, 1),
-                    ).unflatten(0, (B, F_v))
-
-                    noisy_audio = self.add_noise_fn(
-                        pred_audio, fresh_noise_audio, next_audio_sigma
-                    )
-            else:
-                # At t=0, just use the prediction
-                noisy_video = pred_video
-                noisy_audio = pred_audio
-
-            video_trajectory.append(noisy_video)
-            audio_trajectory.append(noisy_audio)
-
-        # Stack trajectories: [B, T, F, C, H, W]
-        video_trajectory = torch.stack(video_trajectory, dim=1)
-        audio_trajectory = torch.stack(audio_trajectory, dim=1)
-
-        return video_trajectory, audio_trajectory
-
-
 class BidirectionalAVInferencePipeline:
     """
     Pipeline for few-step bidirectional inference.
 
-    Used for validation after training to generate videos/audio
-    using the distilled model.
+    Generates audio-video samples using a distilled model.
     """
 
     def __init__(

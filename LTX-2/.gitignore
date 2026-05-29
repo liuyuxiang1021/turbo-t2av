@@ -18,7 +18,6 @@ checkpoints/
 # Other files
 .DS_Store
 tmp
-.wandb
 
 # Model checkpoints
 *.ckpt

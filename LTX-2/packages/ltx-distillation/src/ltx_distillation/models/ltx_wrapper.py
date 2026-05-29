@@ -1,8 +1,8 @@
 """
-LTX-2 Diffusion Model Wrapper for DMD distillation.
+LTX-2 diffusion model wrapper for TurboT2AV inference.
 
-This wrapper adapts LTX-2's audio-video joint generation model for use in
-DMD (Distribution Matching Distillation) training.
+This wrapper adapts LTX-2's audio-video joint generation model to the latent
+layout used by the TurboT2AV inference runner.
 
 Model Architecture:
 - patch_size = (1, 1, 1): No spatial/temporal grouping
@@ -32,7 +32,7 @@ from ltx_core.types import (
 
 class LTX2DiffusionWrapper(nn.Module):
     """
-    Wrapper for LTX-2 model to provide DMD-compatible interface.
+    Wrapper for LTX-2 model inference.
 
     Handles:
     - Input format conversion: [B, F, C, H, W] -> Modality
@@ -171,7 +171,7 @@ class LTX2DiffusionWrapper(nn.Module):
         )
         video_latent = self.video_patchifier.unpatchify(flat_latent, output_shape)
 
-        # Convert from [B, C, F, H, W] to [B, F, C, H, W] (DMD format)
+        # Convert from [B, C, F, H, W] to [B, F, C, H, W].
         video_latent = video_latent.permute(0, 2, 1, 3, 4)
 
         return video_latent
@@ -330,7 +330,7 @@ class LTX2DiffusionWrapper(nn.Module):
         **kwargs,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
         """
-        Forward pass for DMD distillation.
+        Forward pass for audio-video inference.
 
         Args:
             noisy_image_or_video: Noisy video latent [B, F, C, H, W]

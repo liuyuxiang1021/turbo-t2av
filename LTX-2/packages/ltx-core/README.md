@@ -1,6 +1,6 @@
 # LTX-Core
 
-The foundational library for the LTX-2 Audio-Video generation model. This package contains the raw model definitions, component implementations, and loading logic used by `ltx-pipelines` and `ltx-trainer`.
+The foundational library for the LTX-2 Audio-Video generation model. This package contains the model definitions, component implementations, and loading logic used by TurboT2AV inference.
 
 ## 📦 What's Inside?
 
@@ -13,7 +13,7 @@ The foundational library for the LTX-2 Audio-Video generation model. This packag
 
 ## 🚀 Quick Start
 
-`ltx-core` provides the building blocks (models, components, and utilities) needed to construct inference flows. For ready-made inference pipelines use [`ltx-pipelines`](../ltx-pipelines/) or [`ltx-trainer`](../ltx-trainer/) for training.
+`ltx-core` provides the building blocks (models, components, and utilities) needed to construct TurboT2AV inference flows.
 
 ## 🔧 Installation
 
@@ -254,7 +254,7 @@ System prompts are also used to enhance user's prompts.
 - Video context: `[B, seq_len, 4096]` - Video-specific text embeddings
 - Audio context: `[B, seq_len, 2048]` - Audio-specific text embeddings
 
-The text encoder is used internally by pipelines. For usage examples, see the [`ltx-pipelines`](../ltx-pipelines/) package.
+The text encoder is used internally by the TurboT2AV inference runner.
 
 ---
 
@@ -262,7 +262,7 @@ The text encoder is used internally by pipelines. For usage examples, see the [`
 
 The Upscaler ([`src/ltx_core/model/upsampler/`](src/ltx_core/model/upsampler/)) upsamples latent representations for higher-resolution output.
 
-The spatial upsampler is used internally by two-stage pipelines (e.g., [`TI2VidTwoStagesPipeline`](../ltx-pipelines/src/ltx_pipelines/ti2vid_two_stages.py), [`ICLoraPipeline`](../ltx-pipelines/src/ltx_pipelines/ic_lora.py)) to upsample low-resolution latents before final VAE decoding. For usage examples, see the [`ltx-pipelines`](../ltx-pipelines/) package.
+The spatial upsampler can upsample low-resolution latents before final VAE decoding.
 
 ---
 
@@ -284,16 +284,8 @@ Here's how all the components work together conceptually ([`src/ltx_core/compone
    - Apply guidance (CFG, STG, etc.)
    - Update latents using diffusion step (Euler, etc.)
 6. **Unpatchification**: Convert sequence back to spatial format
-7. **VAE Decoding**: Decode latents to pixel space (with optional upsampling for two-stage)
-
-- [`TI2VidTwoStagesPipeline`](../ltx-pipelines/src/ltx_pipelines/ti2vid_two_stages.py) - Two-stage text-to-video (recommended)
-- [`ICLoraPipeline`](../ltx-pipelines/src/ltx_pipelines/ic_lora.py) - Video-to-video with IC-LoRA control
-- [`DistilledPipeline`](../ltx-pipelines/src/ltx_pipelines/distilled.py) - Fast inference with distilled model
-- [`KeyframeInterpolationPipeline`](../ltx-pipelines/src/ltx_pipelines/keyframe_interpolation.py) - Keyframe-based interpolation
-
-See the [ltx-pipelines README](../ltx-pipelines/README.md) for usage examples.
+7. **VAE Decoding**: Decode latents to pixel space.
 
 ## 🔗 Related Projects
 
-- **[ltx-pipelines](../ltx-pipelines/)** - High-level pipeline implementations for text-to-video, image-to-video, and video-to-video
-- **[ltx-trainer](../ltx-trainer/)** - Training and fine-tuning tools
+- **[ltx-pipelines](../ltx-pipelines/)** - Minimal model-loading utilities used by TurboT2AV inference

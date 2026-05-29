@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ltx-distillation"
 version = "0.1.0"
-description = "DMD Distillation for LTX-2 Audio-Video Generation"
+description = "TurboT2AV inference runner for LTX-2 audio-video generation"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "Apache-2.0"}
@@ -13,10 +13,8 @@ license = {text = "Apache-2.0"}
 dependencies = [
     "torch>=2.2.0",
     "omegaconf>=2.3.0",
-    "wandb>=0.15.0",
     "safetensors>=0.4.0",
     "einops>=0.7.0",
-    "lmdb>=1.4.0",
     "ltx-core",
     "ltx-pipelines",
 ]
