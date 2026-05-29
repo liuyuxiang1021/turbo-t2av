@@ -18,9 +18,8 @@ Main contributions:
   families of methods.
 - Shows that CM, as a forward-divergence offline method, can complement DMD, a
   reverse-KL on-policy method.
-- To our knowledge, first extends this combined distillation strategy to a
-  large-scale joint audio-video generation model at the 14B-video + 5B-audio
-  scale.
+- First extends this combined distillation strategy to a large-scale joint
+  audio-video generation model at the 14B-video + 5B-audio scale.
 
 <table>
   <thead>
