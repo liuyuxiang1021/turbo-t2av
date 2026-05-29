@@ -60,7 +60,7 @@ generator_adaln_lr: 3.0e-06
 generator_output_scale_shift_lr: 1.0e-06
 critic_lr: 2.0e-06
 beta1: 0.0
-beta2: 0.0
+beta2: 0.9
 weight_decay: 0.01
 dfake_gen_update_ratio: 3
 max_grad_norm: 99999.0
@@ -95,7 +95,7 @@ text_encoder_fsdp_wrap_strategy: size
 output_path: /data/datasets/turbodiff_datasets_and_ckpt/my_omniforcing
 log_iters: 1
 train_log_all_scalars: true
-checkpoint_iters: 100
+checkpoint_iters: 500
 skip_initial_checkpoint: true
 
 benchmark_enabled: true
