@@ -74,6 +74,13 @@ pixi run pip install -e packages/ltx-distillation
 
 ## 2. Download Weights
 
+Gemma is a gated Hugging Face model. Before downloading, visit the model page,
+accept the access terms, and export a Hugging Face token with access permission:
+
+```bash
+export HF_TOKEN=your_huggingface_token
+```
+
 Base model weights:
 
 ```bash
