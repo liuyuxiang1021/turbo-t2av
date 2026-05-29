@@ -142,7 +142,7 @@ lightning_logs/
 *.wav
 
 # Keep README demo assets self-contained in packaged copies of the repository.
-!assets/videos/demo/*.mp4
+!assets/*.mp4
 *.mp3
 *.flac
 *.ogg
