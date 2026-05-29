@@ -9,6 +9,7 @@ Fast text-to-audio-video generation distilled from LTX-2 19B.
 ## Overview
 
 TurboT2AV generates synchronized audio-video from text prompts in 4 steps.
+The demo compares the 40-step teacher with the 4-step student.
 This repository provides single-GPU inference for the distilled checkpoint.
 
 Main contributions:
@@ -24,8 +25,8 @@ Main contributions:
 <table>
   <thead>
     <tr>
-      <th align="center" width="50%">Teacher</th>
-      <th align="center" width="50%">Student</th>
+      <th align="center" width="50%">Teacher (40 steps)</th>
+      <th align="center" width="50%">Student (4 steps)</th>
     </tr>
   </thead>
   <tbody>
@@ -95,7 +96,7 @@ export TURBO_CHECKPOINT_PATH=/path/to/ltx-2-19b-dev.safetensors
 export TURBO_GEMMA_PATH=/path/to/gemma-3-12b-it-qat-q4_0-unquantized
 ```
 
-### Teacher (40-step reference)
+### Teacher (40 steps)
 
 ```bash
 cd LTX-2
@@ -111,7 +112,7 @@ PYTHONPATH=packages/ltx-distillation/src:packages/ltx-core/src:packages/ltx-pipe
   --num_prompts 8
 ```
 
-### Student (4-step)
+### Student (4 steps)
 
 ```bash
 cd LTX-2
