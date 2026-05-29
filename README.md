@@ -76,7 +76,19 @@ pixi run pip install -e packages/ltx-pipelines
 pixi run pip install -e packages/ltx-distillation
 ```
 
+If this project is used as a folder inside TurboDiffusion, start from:
+
+```bash
+cd TurboDiffusion/TurboT2av/LTX-2
+```
+
 ## 2. Download Weights
+
+| Model Name | Checkpoint Link | Best Resolution |
+| --- | --- | --- |
+| TurboT2AV-14BVideo-5BAudio | [Hugging Face Model](https://huggingface.co/luyu1021/turbo-t2av) | 512x768 |
+| LTX-2-19B | [Hugging Face Model](https://huggingface.co/Lightricks/LTX-2) | 512x768 |
+| Gemma-3-12B-IT-QAT-Q4_0 | [Hugging Face Model](https://huggingface.co/google/gemma-3-12b-it-qat-q4_0-unquantized) | N/A |
 
 Gemma is a gated Hugging Face model. Before downloading, visit the model page,
 accept the access terms, and export a Hugging Face token with access permission:
