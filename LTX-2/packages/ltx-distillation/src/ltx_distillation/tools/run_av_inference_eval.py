@@ -249,7 +249,12 @@ def _decode_and_save_sample(
     video_fps: int,
     audio_sample_rate: int,
 ) -> None:
-    os.makedirs(output_dir, exist_ok=True)
+    video_dir = os.path.join(output_dir, "video")
+    audio_dir = os.path.join(output_dir, "audio")
+    json_dir = os.path.join(output_dir, "json")
+    os.makedirs(video_dir, exist_ok=True)
+    os.makedirs(audio_dir, exist_ok=True)
+    os.makedirs(json_dir, exist_ok=True)
 
     video_pixel = video_vae.decode_to_pixel(video_latent)
     audio_waveform = audio_vae.decode_to_waveform(audio_latent)
@@ -261,8 +266,9 @@ def _decode_and_save_sample(
     vid = (vid.clamp(0, 1) * 255).cpu().to(torch.uint8)
 
     sample_stem = f"sample_{prompt_idx:04d}"
-    mp4_path = os.path.join(output_dir, f"{sample_stem}.mp4")
-    wav_path = os.path.join(output_dir, f"{sample_stem}.wav")
+    mp4_path = os.path.join(video_dir, f"{sample_stem}.mp4")
+    wav_path = os.path.join(audio_dir, f"{sample_stem}.wav")
+    json_path = os.path.join(json_dir, f"{sample_stem}.json")
 
     from torchvision.io import write_video
 
@@ -284,7 +290,7 @@ def _decode_and_save_sample(
 
     _save_wav(wav_path, wav_float, audio_sample_rate)
 
-    with open(os.path.join(output_dir, f"{sample_stem}.json"), "w", encoding="utf-8") as f:
+    with open(json_path, "w", encoding="utf-8") as f:
         json.dump({"index": prompt_idx, "prompt": prompt, "mp4": mp4_path, "wav": wav_path}, f, ensure_ascii=False)
 
     del video_pixel, audio_waveform
@@ -555,9 +561,16 @@ def main() -> None:
     negative_prompt = str(cfg.negative_prompt)
     start = time.perf_counter()
     for local_pos, prompt_idx in enumerate(indices, start=1):
-        mp4_path = os.path.join(args.output_dir, f"sample_{prompt_idx:04d}.mp4")
-        wav_path = os.path.join(args.output_dir, f"sample_{prompt_idx:04d}.wav")
-        if not args.overwrite and os.path.exists(mp4_path) and os.path.exists(wav_path):
+        sample_stem = f"sample_{prompt_idx:04d}"
+        mp4_path = os.path.join(args.output_dir, "video", f"{sample_stem}.mp4")
+        wav_path = os.path.join(args.output_dir, "audio", f"{sample_stem}.wav")
+        json_path = os.path.join(args.output_dir, "json", f"{sample_stem}.json")
+        if (
+            not args.overwrite
+            and os.path.exists(mp4_path)
+            and os.path.exists(wav_path)
+            and os.path.exists(json_path)
+        ):
             print(f"[AVEval] skip existing index={prompt_idx} ({local_pos}/{len(indices)})", flush=True)
             continue
 

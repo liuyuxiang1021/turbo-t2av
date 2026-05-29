@@ -137,3 +137,6 @@ PYTHONPATH=packages/ltx-distillation/src:packages/ltx-core/src:packages/ltx-pipe
 ```
 
 `--prompts_file` supports CSV (`video_id,prompt`) or plain text (one prompt per line).
+
+Outputs are saved under the requested `--output_dir` with separate subfolders:
+`video/` for MP4 files, `audio/` for WAV files, and `json/` for prompt metadata.
