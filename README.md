@@ -65,20 +65,15 @@ Main contributions:
 
 ## 1. Setup
 
+If this project is used as a folder inside TurboDiffusion, start from:
+
 ```bash
-git clone https://github.com/liuyuxiang1021/turbo-t2av.git
-cd turbo-t2av/LTX-2
+cd TurboDiffusion/TurboT2AV/LTX-2
 pixi install
 pixi run install-pytorch
 pixi run pip install -e packages/ltx-core
 pixi run pip install -e packages/ltx-pipelines
 pixi run pip install -e packages/ltx-distillation
-```
-
-If this project is used as a folder inside TurboDiffusion, start from:
-
-```bash
-cd TurboDiffusion/TurboT2AV/LTX-2
 ```
 
 ## 2. Download Weights
