@@ -1980,9 +1980,9 @@ class Trainer:
             if max_steps and self.step >= max_steps:
                 break
 
+        if not getattr(self.config, "no_save", False):
+            self.save()
         if self.is_main_process:
-            if not getattr(self.config, "no_save", False):
-                self.save()
             self._safe_wandb_finish()
 
 
