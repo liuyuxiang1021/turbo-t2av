@@ -19,9 +19,8 @@ Main contributions:
 
 - Combines the diversity of consistency models (DCM/SCM) with the high
   perceptual quality of score-model distillation (DMD), taking advantage of both
-  families of methods.
-- Shows that CM, as a forward-divergence offline method, can complement DMD, a
-  reverse-KL on-policy method.
+  families of methods by using CM as a forward-divergence offline method that
+  complements DMD as a reverse-KL on-policy method.
 - First extends this combined distillation strategy to a large-scale joint
   audio-video generation model at the 14B-video + 5B-audio scale.
 
