@@ -67,6 +67,7 @@ Main contributions:
 git clone https://github.com/liuyuxiang1021/turbo-t2av.git
 cd turbo-t2av/LTX-2
 pixi install
+pixi run install-pytorch
 pixi run pip install -e packages/ltx-core
 pixi run pip install -e packages/ltx-pipelines
 pixi run pip install -e packages/ltx-distillation

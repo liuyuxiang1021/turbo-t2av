@@ -5,8 +5,8 @@ description = "Core implementation of Lightricks' LTX-2 model"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "torch~=2.7",
-    "torchaudio",
+    "torch==2.7.0",
+    "torchaudio==2.7.0",
     "einops",
     "numpy",
     "transformers~=4.57.0",
