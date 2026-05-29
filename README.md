@@ -65,8 +65,6 @@ Main contributions:
 
 ## 1. Setup
 
-If this project is used as a folder inside TurboDiffusion, start from:
-
 ```bash
 cd TurboDiffusion/TurboT2AV/LTX-2
 pixi install
