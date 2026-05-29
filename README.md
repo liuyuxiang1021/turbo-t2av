@@ -10,6 +10,13 @@ Fast text-to-audio-video generation distilled from LTX-2 19B.
 
 TurboT2AV generates synchronized audio-video from text prompts in 4 steps.
 This repository provides single-GPU inference for the distilled checkpoint.
+The main contribution of this project is to combine the diversity of consistency
+models (DCM/SCM) with the high perceptual quality of score-model distillation
+(DMD), taking advantage of both families of methods. In particular, CM, as a
+forward-divergence offline method, can complement DMD, a reverse-KL on-policy
+method. To our knowledge, TurboT2AV is the first work to extend this combined
+distillation strategy to a large-scale joint audio-video generation model at the
+14B-video + 5B-audio scale.
 
 <table>
   <thead>
