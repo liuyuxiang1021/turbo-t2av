@@ -189,13 +189,11 @@ H20 generator-only measurements at `512x768`, 121 frames, 4 prompts:
 | Path | Generator timing | Notes |
 | --- | ---: | --- |
 | 40-step teacher | 55.05s/video | Stage-3/rCM median from previous teacher benchmark logs. |
-| 40-step teacher, 8-rank benchmark | 7.30s/video | Wall-clock throughput after sharding 8 prompts over 8 ranks. |
 | 4-step student, default attention | 2.53s/video | Normal TurboT2AV inference path. |
 | 4-step student, SageAttention self + FastNorm | 2.17s/video | Current accelerated path, about 1.16x over default attention. |
 
 Against the accelerated 4-step student, the 40-step teacher is about 25.3x
-slower by per-video generator time, or about 3.4x slower by the 8-rank
-wall-throughput number.
+slower by per-video generator time.
 
 The acceleration gain over default student inference is modest because the
 default LTX path already uses an efficient attention backend, TurboT2AV's
