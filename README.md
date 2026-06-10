@@ -83,6 +83,10 @@ norm kernels:
 pixi run install-sageattention
 ```
 
+This installs SageAttention from the upstream source tree because PyPI only
+publishes the older 1.0.x series. To use a local checkout, set
+`SAGEATTENTION_PACKAGE=/path/to/SageAttention` before running the task.
+
 FastNorm is loaded from the parent TurboDiffusion checkout. If TurboT2AV is not
 checked out inside TurboDiffusion, add TurboDiffusion to `PYTHONPATH` before
 running accelerated inference:
