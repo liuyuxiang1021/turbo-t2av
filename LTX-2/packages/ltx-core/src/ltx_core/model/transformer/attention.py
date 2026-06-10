@@ -112,6 +112,8 @@ class FlashAttention3(AttentionCallable):
             raise NotImplementedError("Mask is not supported for FlashAttention3")
 
         out = flash_attn_interface.flash_attn_func(q.to(v.dtype), k.to(v.dtype), v)
+        if isinstance(out, tuple):
+            out = out[0]
         out = out.reshape(b, -1, heads * dim_head)
         return out
 

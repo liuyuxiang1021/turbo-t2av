@@ -11,8 +11,10 @@ Fast text-to-audio-video generation distilled from LTX-2 19B.
 TurboT2AV generates synchronized audio-video from text prompts in 4 steps.
 The demo compares the 40-step teacher with the 4-step student.
 This repository provides single-GPU inference for the distilled checkpoint.
-On an NVIDIA H20, single-sample inference takes about 50 seconds for the
-40-step teacher and about 2.5 seconds for the 4-step student.
+On an NVIDIA H20, previous benchmark logs report about 55 seconds/video
+generator time for the 40-step teacher, about 2.53 seconds/video for the
+default 4-step student, and about 2.17 seconds/video with optional
+SageAttention + FastNorm inference acceleration.
 Training code and the full data-processing pipeline are coming soon.
 
 Main contributions:
@@ -72,6 +74,21 @@ pixi run install-pytorch
 pixi run pip install -e packages/ltx-core
 pixi run pip install -e packages/ltx-pipelines
 pixi run pip install -e packages/ltx-distillation
+```
+
+Optional inference acceleration uses SageAttention plus TurboDiffusion's fused
+norm kernels:
+
+```bash
+pixi run install-sageattention
+```
+
+FastNorm is loaded from the parent TurboDiffusion checkout. If TurboT2AV is not
+checked out inside TurboDiffusion, add TurboDiffusion to `PYTHONPATH` before
+running accelerated inference:
+
+```bash
+export PYTHONPATH=/path/to/TurboDiffusion:/path/to/TurboDiffusion/turbodiffusion:$PYTHONPATH
 ```
 
 ## 2. Download Weights
@@ -142,6 +159,48 @@ PYTHONPATH=packages/ltx-distillation/src:packages/ltx-core/src:packages/ltx-pipe
   --student_param auto \
   --num_prompts 8
 ```
+
+### Student (4 steps, SageAttention + FastNorm)
+
+```bash
+cd LTX-2
+PYTHONPATH=/path/to/TurboDiffusion:/path/to/TurboDiffusion/turbodiffusion:packages/ltx-distillation/src:packages/ltx-core/src:packages/ltx-pipelines/src:$PYTHONPATH \
+  CUDA_VISIBLE_DEVICES=0 \
+  pixi run python -m ltx_distillation.tools.run_av_inference_eval \
+  --config_path packages/ltx-distillation/configs/bidirectional_rcm.yaml \
+  --prompts_file /path/to/prompts.csv \
+  --output_dir /path/to/student_sageattn_fastnorm_output \
+  --model_kind student \
+  --student_checkpoint /path/to/checkpoint.pt \
+  --student_param auto \
+  --num_prompts 8 \
+  --attention_type sageattn \
+  --attention_scope self \
+  --fast_norm
+```
+
+`--attention_scope self` replaces video/audio self-attention only. Masked text
+cross-attention stays on the native backend because SageAttention does not
+support the LTX text mask path here. For timing-only comparisons, add
+`--skip_decode --timing_json /path/to/timing.json`.
+
+H20 generator-only measurements at `512x768`, 121 frames, 4 prompts:
+
+| Path | Generator timing | Notes |
+| --- | ---: | --- |
+| 40-step teacher | 55.05s/video | Stage-3/rCM median from previous teacher benchmark logs. |
+| 40-step teacher, 8-rank benchmark | 7.30s/video | Wall-clock throughput after sharding 8 prompts over 8 ranks. |
+| 4-step student, default attention | 2.53s/video | Normal TurboT2AV inference path. |
+| 4-step student, SageAttention self + FastNorm | 2.17s/video | Current accelerated path, about 1.16x over default attention. |
+
+Against the accelerated 4-step student, the 40-step teacher is about 25.3x
+slower by per-video generator time, or about 3.4x slower by the 8-rank
+wall-throughput number.
+
+The acceleration gain over default student inference is modest because the
+default LTX path already uses an efficient attention backend, TurboT2AV's
+`512x768` latent sequence is shorter than large 720p video-only benchmarks, and
+non-attention work remains unchanged.
 
 `--prompts_file` supports CSV (`video_id,prompt`) or plain text (one prompt per line).
 
