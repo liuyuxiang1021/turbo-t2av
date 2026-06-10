@@ -69,7 +69,7 @@ dev = { features = ["dev"], solve-group = "default" }
 [tool.pixi.tasks]
 install-pytorch = "pip install torch==2.7.0+cu128 torchvision==0.22.0+cu128 torchaudio==2.7.0+cu128 --index-url https://download.pytorch.org/whl/cu128"
 install-local = { depends-on = ["install-pytorch"], cmd = "pip install -e packages/ltx-core -e packages/ltx-pipelines -e packages/ltx-distillation" }
-install-sageattention = { depends-on = ["install-pytorch"], cmd = "bash -lc 'pip install \"${SAGEATTENTION_PACKAGE:-git+https://github.com/thu-ml/SageAttention.git}\"'" }
+install-sageattention = { depends-on = ["install-pytorch"], cmd = "bash -lc 'pip install --no-build-isolation \"${SAGEATTENTION_PACKAGE:-git+https://github.com/thu-ml/SageAttention.git}\"'" }
 
 [tool.pixi.pypi-dependencies]
 lmdb = ">=2.2.1,<3"

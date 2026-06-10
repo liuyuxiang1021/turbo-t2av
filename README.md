@@ -70,10 +70,7 @@ Main contributions:
 ```bash
 cd TurboDiffusion/TurboT2AV/LTX-2
 pixi install
-pixi run install-pytorch
-pixi run pip install -e packages/ltx-core
-pixi run pip install -e packages/ltx-pipelines
-pixi run pip install -e packages/ltx-distillation
+pixi run install-local
 ```
 
 Optional inference acceleration uses SageAttention plus TurboDiffusion's fused
@@ -84,8 +81,10 @@ pixi run install-sageattention
 ```
 
 This installs SageAttention from the upstream source tree because PyPI only
-publishes the older 1.0.x series. To use a local checkout, set
-`SAGEATTENTION_PACKAGE=/path/to/SageAttention` before running the task.
+publishes the older 1.0.x series. The task uses `--no-build-isolation` because
+SageAttention imports the already-installed PyTorch package during setup. To
+use a local checkout, set `SAGEATTENTION_PACKAGE=/path/to/SageAttention`
+before running the task.
 
 FastNorm is loaded from the parent TurboDiffusion checkout. If TurboT2AV is not
 checked out inside TurboDiffusion, add TurboDiffusion to `PYTHONPATH` before
