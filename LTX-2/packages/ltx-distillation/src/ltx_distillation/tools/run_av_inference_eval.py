@@ -24,7 +24,12 @@ from omegaconf import OmegaConf
 
 from ltx_core.components.schedulers import LTX2Scheduler
 from ltx_core.loader.registry import DummyRegistry, StateDictRegistry
-from ltx_distillation.acceleration import ATTENTION_SCOPES, ATTENTION_TYPES, apply_turbodiffusion_acceleration
+from ltx_distillation.acceleration import (
+    ATTENTION_SCOPES,
+    ATTENTION_TYPES,
+    DEFAULT_SLA_TOPK,
+    apply_turbodiffusion_acceleration,
+)
 from ltx_distillation.inference.bidirectional_pipeline import BidirectionalAVInferencePipeline
 from ltx_distillation.models.ltx_trig_wrapper import create_ltx2_trig_wrapper
 from ltx_distillation.models.ltx_wrapper import create_ltx2_wrapper
@@ -482,6 +487,27 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--sla_topk",
+        type=float,
+        default=DEFAULT_SLA_TOPK,
+        help=(
+            "Top-k block ratio for SLA/SageSLA. The default is quality-first; "
+            "smaller values are faster but can change generation quality."
+        ),
+    )
+    parser.add_argument(
+        "--sla_block_q",
+        type=int,
+        default=128,
+        help="Query block size for the non-Sage SLA backend.",
+    )
+    parser.add_argument(
+        "--sla_block_k",
+        type=int,
+        default=64,
+        help="Key block size for the non-Sage SLA backend.",
+    )
+    parser.add_argument(
         "--fast_norm",
         action="store_true",
         default=False,
@@ -614,6 +640,9 @@ def main() -> None:
             attention_type=args.attention_type,
             attention_scope=args.attention_scope,
             fast_norm=args.fast_norm,
+            sla_topk=args.sla_topk,
+            sla_block_q=args.sla_block_q,
+            sla_block_k=args.sla_block_k,
         )
         print(acceleration_report.format(), flush=True)
 

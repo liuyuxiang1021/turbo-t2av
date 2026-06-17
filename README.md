@@ -73,8 +73,8 @@ pixi install
 pixi run install-local
 ```
 
-Optional inference acceleration uses SageAttention plus TurboDiffusion's fused
-norm kernels:
+Optional inference acceleration uses SageAttention/SageSLA plus
+TurboDiffusion's fused norm kernels:
 
 ```bash
 pixi run install-sageattention
@@ -86,13 +86,27 @@ SageAttention imports the already-installed PyTorch package during setup. To
 use a local checkout, set `SAGEATTENTION_PACKAGE=/path/to/SageAttention`
 before running the task.
 
-FastNorm is loaded from the parent TurboDiffusion checkout. If TurboT2AV is not
-checked out inside TurboDiffusion, add TurboDiffusion to `PYTHONPATH` before
-running accelerated inference:
+For SageSLA, also install SpargeAttn:
+
+```bash
+pixi run install-spargeattn
+```
+
+To use a local checkout, set `SPARGEATTN_PACKAGE=/path/to/SpargeAttn` before
+running the task.
+
+FastNorm and SLA are loaded from the parent TurboDiffusion checkout. If
+TurboT2AV is not checked out inside TurboDiffusion, add TurboDiffusion to
+`PYTHONPATH` before running accelerated inference:
 
 ```bash
 export PYTHONPATH=/path/to/TurboDiffusion:/path/to/TurboDiffusion/turbodiffusion:$PYTHONPATH
 ```
+
+`--attention_type sagesla` additionally requires TurboDiffusion's SLA module
+and the SpargeAttn/SageSLA extension to be installed in the active Python
+environment. Without an SLA adapter checkpoint, TurboDiffusion's `proj_l`
+compensation layer is zero-initialized, matching the plug-in inference path.
 
 ## 2. Download Weights
 
@@ -187,6 +201,31 @@ cross-attention stays on the native backend because SageAttention does not
 support the LTX text mask path here. For timing-only comparisons, add
 `--skip_decode --timing_json /path/to/timing.json`.
 
+### Student (4 steps, SageSLA + FastNorm)
+
+```bash
+cd LTX-2
+PYTHONPATH=/path/to/TurboDiffusion:/path/to/TurboDiffusion/turbodiffusion:packages/ltx-distillation/src:packages/ltx-core/src:packages/ltx-pipelines/src:$PYTHONPATH \
+  CUDA_VISIBLE_DEVICES=0 \
+  pixi run python -m ltx_distillation.tools.run_av_inference_eval \
+  --config_path packages/ltx-distillation/configs/bidirectional_rcm.yaml \
+  --prompts_file /path/to/prompts.csv \
+  --output_dir /path/to/student_sagesla_fastnorm_output \
+  --model_kind student \
+  --student_checkpoint /path/to/checkpoint.pt \
+  --student_param auto \
+  --num_prompts 8 \
+  --attention_type sagesla \
+  --attention_scope self \
+  --sla_topk 1.0 \
+  --fast_norm
+```
+
+`--sla_topk 1.0` is the quality-first default for TurboT2AV. Lower values such
+as `0.8`, `0.6`, or `0.4` are faster on long video sequences, but they change
+generated content more visibly because SLA is a sparse-linear attention
+approximation, not a numerically equivalent dense-attention kernel.
+
 H20 generator-only measurements at `512x768`, 121 frames, 4 prompts:
 
 | Path | Generator timing | Notes |
@@ -202,6 +241,26 @@ The acceleration gain over default student inference is modest because the
 default LTX path already uses an efficient attention backend, TurboT2AV's
 `512x768` latent sequence is shorter than large 720p video-only benchmarks, and
 non-attention work remains unchanged.
+
+H20 SageSLA top-k sweep at `704x1280`, 121 frames, first 4 prompts, no SLA
+adapter checkpoint:
+
+| Path | Median generator time | Speedup vs default | Video MAE vs default | Notes |
+| --- | ---: | ---: | ---: | --- |
+| default + FastNorm | 5.99s/video | 1.00x | 0.00/255 | Dense attention baseline. |
+| SageSLA topk=0.8 + FastNorm | 5.29s/video | 1.13x | 17.02/255 | Faster, but visible content changes. |
+| SageSLA topk=0.9 + FastNorm | 5.37s/video | 1.12x | 15.70/255 | Slightly more conservative. |
+| SageSLA topk=1.0 + FastNorm | 5.45s/video | 1.10x | 9.00/255 | Recommended quality-first SLA setting. |
+
+At a larger `1024x1792` stress-test resolution, the latent sequence length grows
+to 229,376 self-attention tokens. On the same first 4 prompts, SageSLA
+`topk=0.4` improves median generator time from 15.97s/video to 10.58s/video
+(1.51x), but mean video MAE rises to 31.55/255 versus default. This setting is
+useful for speed experiments, but the quality shift is visible.
+
+These SageSLA numbers are lower than TurboDiffusion's Wan2.1 720p SageSLA
+speedups because TurboT2AV has a much shorter latent sequence and only the
+selected self-attention modules are replaced.
 
 `--prompts_file` supports CSV (`video_id,prompt`) or plain text (one prompt per line).
 

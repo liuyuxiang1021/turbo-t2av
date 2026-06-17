@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import math
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -12,8 +13,9 @@ import torch
 
 from ltx_core.model.transformer.attention import Attention
 
-ATTENTION_TYPES = ("default", "sageattn")
+ATTENTION_TYPES = ("default", "sageattn", "sla", "sagesla")
 ATTENTION_SCOPES = ("self", "self_av")
+DEFAULT_SLA_TOPK = 1.0
 
 
 @dataclass(frozen=True)
@@ -21,6 +23,7 @@ class AccelerationReport:
     attention_type: str
     attention_scope: str
     replaced_attention: int = 0
+    skipped_attention: int = 0
     replaced_norm: int = 0
     replaced_functional_norm: int = 0
 
@@ -30,6 +33,7 @@ class AccelerationReport:
             f"attention_type={self.attention_type} "
             f"attention_scope={self.attention_scope} "
             f"replaced_attention={self.replaced_attention} "
+            f"skipped_attention={self.skipped_attention} "
             f"replaced_norm={self.replaced_norm} "
             f"replaced_functional_norm={self.replaced_functional_norm}"
         )
@@ -132,6 +136,108 @@ class SageAttentionCallable(torch.nn.Module):
         return out.transpose(1, 2).reshape(batch, -1, inner_dim)
 
 
+class LTXSLAAttention(torch.nn.Module):
+    """Adapter from LTX attention tensors to TurboDiffusion's vendored SLA."""
+
+    def __init__(
+        self,
+        head_dim: int,
+        topk: float,
+        block_q: int,
+        block_k: int,
+        use_bf16: bool,
+    ) -> None:
+        super().__init__()
+        _ensure_turbodiffusion_path()
+        from SLA import SparseLinearAttention
+
+        self.requested_topk = topk
+        self.block_k = block_k
+        self.local_attn = SparseLinearAttention(
+            head_dim=head_dim,
+            topk=topk,
+            BLKQ=block_q,
+            BLKK=block_k,
+            use_bf16=use_bf16,
+        )
+
+    def forward(
+        self,
+        q: torch.Tensor,
+        k: torch.Tensor,
+        v: torch.Tensor,
+        heads: int,
+        mask: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        if mask is not None:
+            raise NotImplementedError(
+                "SLA is enabled only for unmasked LTX self-attention. "
+                "Use --attention_scope self."
+            )
+
+        batch, _, inner_dim = q.shape
+        head_dim = inner_dim // heads
+        q, k, v = (tensor.view(batch, -1, heads, head_dim).contiguous() for tensor in (q, k, v))
+        key_blocks = max(1, math.ceil(k.shape[1] / self.block_k))
+        effective_topk = max(self.requested_topk, 1.0 / key_blocks)
+        original_topk = self.local_attn.topk
+        self.local_attn.topk = effective_topk
+        try:
+            out = self.local_attn(q, k, v)
+        finally:
+            self.local_attn.topk = original_topk
+        return out.reshape(batch, -1, inner_dim)
+
+
+class LTXSageSLAAttention(torch.nn.Module):
+    """Adapter from LTX attention tensors to TurboDiffusion's SageSLA path."""
+
+    def __init__(self, head_dim: int, topk: float, use_bf16: bool) -> None:
+        super().__init__()
+        _ensure_turbodiffusion_path()
+        from SLA import SageSparseLinearAttention
+
+        self.requested_topk = topk
+        self.local_attn = SageSparseLinearAttention(
+            head_dim=head_dim,
+            topk=topk,
+            use_bf16=use_bf16,
+        )
+
+    @staticmethod
+    def _block_k_for_device(device: torch.device) -> int:
+        if device.type == "cuda" and torch.cuda.get_device_capability(device) == (9, 0):
+            return 128
+        return 64
+
+    def forward(
+        self,
+        q: torch.Tensor,
+        k: torch.Tensor,
+        v: torch.Tensor,
+        heads: int,
+        mask: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        if mask is not None:
+            raise NotImplementedError(
+                "SageSLA is enabled only for unmasked LTX self-attention. "
+                "Use --attention_scope self."
+            )
+
+        batch, _, inner_dim = q.shape
+        head_dim = inner_dim // heads
+        q, k, v = (tensor.view(batch, -1, heads, head_dim).contiguous() for tensor in (q, k, v))
+        key_blocks = max(1, math.ceil(k.shape[1] / self._block_k_for_device(k.device)))
+        effective_topk = max(self.requested_topk, 1.0 / key_blocks)
+        original_topk = self.local_attn.topk
+        self.local_attn.topk = effective_topk
+        try:
+            out = self.local_attn(q, k, v)
+        finally:
+            self.local_attn.topk = original_topk
+        return out.reshape(batch, -1, inner_dim)
+
+
 def _is_self_attention_name(name: str) -> bool:
     return name.endswith("attn1")
 
@@ -148,26 +254,56 @@ def _attention_name_in_scope(name: str, attention_scope: str) -> bool:
     raise ValueError(f"Unsupported attention_scope: {attention_scope}")
 
 
+def _attention_supported_by_backend(name: str, attention_type: str) -> bool:
+    if attention_type in {"sla", "sagesla"} and not _is_self_attention_name(name):
+        return False
+    return True
+
+
 def replace_ltx_attention(
     model: torch.nn.Module,
     attention_type: str,
     attention_scope: str = "self",
-) -> int:
+    sla_topk: float = DEFAULT_SLA_TOPK,
+    sla_block_q: int = 128,
+    sla_block_k: int = 64,
+) -> tuple[int, int]:
     if attention_type not in ATTENTION_TYPES:
         raise ValueError(f"--attention_type must be one of {ATTENTION_TYPES}")
     if attention_scope not in ATTENTION_SCOPES:
         raise ValueError(f"--attention_scope must be one of {ATTENTION_SCOPES}")
     if attention_type == "default":
-        return 0
+        return 0, 0
 
     replaced = 0
+    skipped = 0
     for name, module in model.named_modules():
         if not isinstance(module, Attention) or not _attention_name_in_scope(name, attention_scope):
             continue
-        attention_callable = SageAttentionCallable().to(device=module.to_q.weight.device)
+        if not _attention_supported_by_backend(name, attention_type):
+            skipped += 1
+            continue
+        if attention_type == "sageattn":
+            attention_callable = SageAttentionCallable().to(device=module.to_q.weight.device)
+        elif attention_type == "sla":
+            attention_callable = LTXSLAAttention(
+                head_dim=module.dim_head,
+                topk=sla_topk,
+                block_q=sla_block_q,
+                block_k=sla_block_k,
+                use_bf16=module.to_q.weight.dtype == torch.bfloat16,
+            ).to(device=module.to_q.weight.device, dtype=module.to_q.weight.dtype)
+        elif attention_type == "sagesla":
+            attention_callable = LTXSageSLAAttention(
+                head_dim=module.dim_head,
+                topk=sla_topk,
+                use_bf16=module.to_q.weight.dtype == torch.bfloat16,
+            ).to(device=module.to_q.weight.device, dtype=module.to_q.weight.dtype)
+        else:
+            raise ValueError(f"Unsupported attention_type={attention_type!r}")
         module.attention_function = attention_callable
         replaced += 1
-    return replaced
+    return replaced, skipped
 
 
 def _set_child_module(root: torch.nn.Module, qualified_name: str, new_module: torch.nn.Module) -> None:
@@ -291,13 +427,19 @@ def apply_turbodiffusion_acceleration(
     attention_type: str = "default",
     attention_scope: str = "self",
     fast_norm: bool = False,
+    sla_topk: float = DEFAULT_SLA_TOPK,
+    sla_block_q: int = 128,
+    sla_block_k: int = 64,
 ) -> AccelerationReport:
     if attention_type not in ATTENTION_TYPES:
         raise ValueError(f"Unsupported attention_type={attention_type!r}; expected one of {ATTENTION_TYPES}")
-    replaced_attention = replace_ltx_attention(
+    replaced_attention, skipped_attention = replace_ltx_attention(
         model=model,
         attention_type=attention_type,
         attention_scope=attention_scope,
+        sla_topk=sla_topk,
+        sla_block_q=sla_block_q,
+        sla_block_k=sla_block_k,
     )
     replaced_norm = replace_ltx_norms(model) if fast_norm else 0
     replaced_functional_norm = enable_fast_functional_rms_norm() if fast_norm else 0
@@ -305,6 +447,7 @@ def apply_turbodiffusion_acceleration(
         attention_type=attention_type,
         attention_scope=attention_scope,
         replaced_attention=replaced_attention,
+        skipped_attention=skipped_attention,
         replaced_norm=replaced_norm,
         replaced_functional_norm=replaced_functional_norm,
     )
