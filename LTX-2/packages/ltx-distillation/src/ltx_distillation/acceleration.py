@@ -24,6 +24,7 @@ class AccelerationReport:
     attention_scope: str
     replaced_attention: int = 0
     skipped_attention: int = 0
+    replaced_linear: int = 0
     replaced_norm: int = 0
     replaced_functional_norm: int = 0
 
@@ -34,6 +35,7 @@ class AccelerationReport:
             f"attention_scope={self.attention_scope} "
             f"replaced_attention={self.replaced_attention} "
             f"skipped_attention={self.skipped_attention} "
+            f"replaced_linear={self.replaced_linear} "
             f"replaced_norm={self.replaced_norm} "
             f"replaced_functional_norm={self.replaced_functional_norm}"
         )
@@ -365,6 +367,27 @@ def replace_ltx_norms(model: torch.nn.Module) -> int:
     return len(replacements)
 
 
+def replace_ltx_linears(model: torch.nn.Module, quantize: bool = True) -> int:
+    """Replace loaded generator Linear layers with TurboDiffusion Int8Linear."""
+
+    int8_linear_cls = _import_turbodiffusion_attr(("ops", "turbodiffusion.ops"), "Int8Linear")
+
+    replacements: dict[str, torch.nn.Module] = {}
+    for name, module in model.named_modules():
+        if not name or ".attention_function." in name or name.endswith(".attention_function"):
+            continue
+        if not isinstance(module, torch.nn.Linear):
+            continue
+        if module.weight.device == torch.device("meta"):
+            continue
+        int8_linear = int8_linear_cls.from_linear(module, quantize=quantize)
+        replacements[name] = int8_linear.to(device=module.weight.device)
+
+    for name, new_module in replacements.items():
+        _set_child_module(model, name, new_module)
+    return len(replacements)
+
+
 def enable_fast_functional_rms_norm() -> int:
     """Patch LTX's imported rms_norm helper to TurboDiffusion's fused kernel."""
 
@@ -427,6 +450,7 @@ def apply_turbodiffusion_acceleration(
     attention_type: str = "default",
     attention_scope: str = "self",
     fast_norm: bool = False,
+    quant_linear: bool = False,
     sla_topk: float = DEFAULT_SLA_TOPK,
     sla_block_q: int = 128,
     sla_block_k: int = 64,
@@ -441,6 +465,7 @@ def apply_turbodiffusion_acceleration(
         sla_block_q=sla_block_q,
         sla_block_k=sla_block_k,
     )
+    replaced_linear = replace_ltx_linears(model, quantize=True) if quant_linear else 0
     replaced_norm = replace_ltx_norms(model) if fast_norm else 0
     replaced_functional_norm = enable_fast_functional_rms_norm() if fast_norm else 0
     return AccelerationReport(
@@ -448,6 +473,7 @@ def apply_turbodiffusion_acceleration(
         attention_scope=attention_scope,
         replaced_attention=replaced_attention,
         skipped_attention=skipped_attention,
+        replaced_linear=replaced_linear,
         replaced_norm=replaced_norm,
         replaced_functional_norm=replaced_functional_norm,
     )

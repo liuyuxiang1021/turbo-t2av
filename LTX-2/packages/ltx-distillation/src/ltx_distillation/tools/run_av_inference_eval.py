@@ -16,6 +16,7 @@ import os
 import time
 import types
 from contextlib import contextmanager, nullcontext
+from dataclasses import replace as replace_dataclass
 from typing import Any, Tuple
 
 import numpy as np
@@ -29,6 +30,7 @@ from ltx_distillation.acceleration import (
     ATTENTION_TYPES,
     DEFAULT_SLA_TOPK,
     apply_turbodiffusion_acceleration,
+    replace_ltx_linears,
 )
 from ltx_distillation.inference.bidirectional_pipeline import BidirectionalAVInferencePipeline
 from ltx_distillation.models.ltx_trig_wrapper import create_ltx2_trig_wrapper
@@ -514,6 +516,21 @@ def parse_args() -> argparse.Namespace:
         help="Replace module RMSNorm/LayerNorm layers with TurboDiffusion fused norm modules.",
     )
     parser.add_argument(
+        "--quant_linear",
+        action="store_true",
+        default=False,
+        help="Replace generator Linear layers with TurboDiffusion W8A8 Int8Linear modules.",
+    )
+    parser.add_argument(
+        "--quant_linear_prequantized",
+        action="store_true",
+        default=False,
+        help=(
+            "Load a student checkpoint whose Linear layers were already saved as "
+            "TurboDiffusion Int8Linear buffers."
+        ),
+    )
+    parser.add_argument(
         "--skip_decode",
         action="store_true",
         default=False,
@@ -569,6 +586,8 @@ def main() -> None:
 
     if args.model_kind == "student" and not args.student_checkpoint:
         raise ValueError("--student_checkpoint is required for --model_kind student")
+    if args.quant_linear_prequantized and args.model_kind != "student":
+        raise ValueError("--quant_linear_prequantized is only supported with --model_kind student")
 
     torch.backends.cuda.matmul.allow_tf32 = True
     torch.backends.cudnn.allow_tf32 = True
@@ -601,6 +620,7 @@ def main() -> None:
         gemma_path=str(getattr(cfg, "gemma_path", "")),
     )
     force_trig = False
+    prequantized_linear_count = 0
 
     with _model_init_lock(init_lock_path, args.shard_id):
         registry = _make_registry(cache_state_dicts)
@@ -632,6 +652,13 @@ def main() -> None:
                 video_width=int(cfg.video_width),
                 registry=registry,
             ).eval()
+            if args.quant_linear_prequantized:
+                prequantized_linear_count = replace_ltx_linears(model, quantize=False)
+                print(
+                    "[TurboT2AV][accel] prepared prequantized Int8Linear "
+                    f"layers={prequantized_linear_count}",
+                    flush=True,
+                )
             _load_generator_state(model, args.student_checkpoint, args.student_strict)
             model.eval()
 
@@ -640,10 +667,16 @@ def main() -> None:
             attention_type=args.attention_type,
             attention_scope=args.attention_scope,
             fast_norm=args.fast_norm,
+            quant_linear=bool(args.quant_linear and not args.quant_linear_prequantized),
             sla_topk=args.sla_topk,
             sla_block_q=args.sla_block_q,
             sla_block_k=args.sla_block_k,
         )
+        if prequantized_linear_count:
+            acceleration_report = replace_dataclass(
+                acceleration_report,
+                replaced_linear=prequantized_linear_count + acceleration_report.replaced_linear,
+            )
         print(acceleration_report.format(), flush=True)
 
         _install_shape_debug(model)
@@ -780,6 +813,8 @@ def main() -> None:
                     "attention_type": args.attention_type,
                     "attention_scope": args.attention_scope,
                     "fast_norm": bool(args.fast_norm),
+                    "quant_linear": bool(args.quant_linear or args.quant_linear_prequantized),
+                    "quant_linear_prequantized": bool(args.quant_linear_prequantized),
                     "generator_seconds": gen_elapsed,
                 }
             )
