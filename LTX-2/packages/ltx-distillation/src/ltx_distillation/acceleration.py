@@ -262,6 +262,34 @@ def _attention_supported_by_backend(name: str, attention_type: str) -> bool:
     return True
 
 
+def _projection_device_dtype(projection: torch.nn.Module) -> tuple[torch.device, torch.dtype]:
+    """Return the runtime device/dtype for Linear or TurboDiffusion Int8Linear."""
+
+    device: torch.device | None = None
+    dtype: torch.dtype | None = None
+
+    for attr_name in ("weight", "bias", "int8_weight", "scale"):
+        tensor = getattr(projection, attr_name, None)
+        if not isinstance(tensor, torch.Tensor) or tensor.device == torch.device("meta"):
+            continue
+        if device is None:
+            device = tensor.device
+        if dtype is None and tensor.is_floating_point() and tensor.dtype != torch.float32:
+            dtype = tensor.dtype
+
+    if device is None:
+        for tensor in list(projection.parameters(recurse=False)) + list(projection.buffers(recurse=False)):
+            if tensor.device != torch.device("meta"):
+                device = tensor.device
+                break
+
+    if dtype is None:
+        dtype = torch.bfloat16
+    if device is None:
+        device = torch.device("cpu")
+    return device, dtype
+
+
 def replace_ltx_attention(
     model: torch.nn.Module,
     attention_type: str,
@@ -285,22 +313,23 @@ def replace_ltx_attention(
         if not _attention_supported_by_backend(name, attention_type):
             skipped += 1
             continue
+        projection_device, projection_dtype = _projection_device_dtype(module.to_q)
         if attention_type == "sageattn":
-            attention_callable = SageAttentionCallable().to(device=module.to_q.weight.device)
+            attention_callable = SageAttentionCallable().to(device=projection_device)
         elif attention_type == "sla":
             attention_callable = LTXSLAAttention(
                 head_dim=module.dim_head,
                 topk=sla_topk,
                 block_q=sla_block_q,
                 block_k=sla_block_k,
-                use_bf16=module.to_q.weight.dtype == torch.bfloat16,
-            ).to(device=module.to_q.weight.device, dtype=module.to_q.weight.dtype)
+                use_bf16=projection_dtype == torch.bfloat16,
+            ).to(device=projection_device, dtype=projection_dtype)
         elif attention_type == "sagesla":
             attention_callable = LTXSageSLAAttention(
                 head_dim=module.dim_head,
                 topk=sla_topk,
-                use_bf16=module.to_q.weight.dtype == torch.bfloat16,
-            ).to(device=module.to_q.weight.device, dtype=module.to_q.weight.dtype)
+                use_bf16=projection_dtype == torch.bfloat16,
+            ).to(device=projection_device, dtype=projection_dtype)
         else:
             raise ValueError(f"Unsupported attention_type={attention_type!r}")
         module.attention_function = attention_callable
