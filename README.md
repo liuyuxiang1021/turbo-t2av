@@ -222,8 +222,8 @@ PYTHONPATH=/path/to/TurboDiffusion:/path/to/TurboDiffusion/turbodiffusion:packag
 ```
 
 `--sla_topk 1.0` is the quality-first default for TurboT2AV. Lower values such
-as `0.8`, `0.6`, or `0.4` are faster on long video sequences, but they change
-generated content more visibly because SLA is a sparse-linear attention
+as `0.8`, `0.6`, `0.4`, or `0.3` are faster on long video sequences, but they
+change generated content more visibly because SLA is a sparse-linear attention
 approximation, not a numerically equivalent dense-attention kernel.
 
 H20 generator-only measurements at `512x768`, 121 frames, 4 prompts:
@@ -257,6 +257,12 @@ to 229,376 self-attention tokens. On the same first 4 prompts, SageSLA
 `topk=0.4` improves median generator time from 15.97s/video to 10.58s/video
 (1.51x), but mean video MAE rises to 31.55/255 versus default. This setting is
 useful for speed experiments, but the quality shift is visible.
+
+On a 10-prompt `1024x1792` quality check, `topk=0.3` improved median generator
+time from 15.98s/video to 10.28s/video (1.56x), with mean video MAE 25.91/255
+and mean PSNR 17.26 dB versus default. In high-resolution settings, `topk=0.3`
+is a reasonable speed/quality tradeoff when exact dense-attention parity is not
+required.
 
 These SageSLA numbers are lower than TurboDiffusion's Wan2.1 720p SageSLA
 speedups because TurboT2AV has a much shorter latent sequence and only the
