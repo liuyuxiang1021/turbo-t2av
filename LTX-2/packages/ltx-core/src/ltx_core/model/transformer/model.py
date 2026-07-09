@@ -29,6 +29,12 @@ class LTXModelType(Enum):
         return self in (LTXModelType.AudioVideo, LTXModelType.AudioOnly)
 
 
+def output_modulate(x: torch.Tensor, scale_shift_table: torch.Tensor, embedded_timestep: torch.Tensor) -> torch.Tensor:
+    scale_shift_values = scale_shift_table[None, None].to(device=x.device, dtype=x.dtype) + embedded_timestep[:, :, None]
+    shift, scale = scale_shift_values[:, :, 0], scale_shift_values[:, :, 1]
+    return x * (1 + scale) + shift
+
+
 class LTXModel(torch.nn.Module):
     """
     LTX model transformer implementation.
@@ -357,14 +363,8 @@ class LTXModel(torch.nn.Module):
         embedded_timestep: torch.Tensor,
     ) -> torch.Tensor:
         """Process output for LTXV."""
-        # Apply scale-shift modulation
-        scale_shift_values = (
-            scale_shift_table[None, None].to(device=x.device, dtype=x.dtype) + embedded_timestep[:, :, None]
-        )
-        shift, scale = scale_shift_values[:, :, 0], scale_shift_values[:, :, 1]
-
         x = norm_out(x)
-        x = x * (1 + scale) + shift
+        x = output_modulate(x, scale_shift_table, embedded_timestep)
         x = proj_out(x)
         return x
 

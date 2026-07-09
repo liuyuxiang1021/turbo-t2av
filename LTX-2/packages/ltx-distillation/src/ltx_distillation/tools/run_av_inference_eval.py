@@ -29,6 +29,8 @@ from ltx_distillation.acceleration import (
     ATTENTION_SCOPES,
     ATTENTION_TYPES,
     DEFAULT_SLA_TOPK,
+    QUANT_LINEAR_BACKENDS,
+    QUANT_LINEAR_SCOPES,
     apply_turbodiffusion_acceleration,
     replace_ltx_linears,
 )
@@ -498,6 +500,15 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--sla_topk_schedule",
+        default="",
+        help=(
+            "Optional per-transformer-layer SLA/SageSLA top-k schedule, for "
+            "example '0-15:0.35,16-31:0.3,32-47:0.25'. Unmatched layers use "
+            "--sla_topk."
+        ),
+    )
+    parser.add_argument(
         "--sla_block_q",
         type=int,
         default=128,
@@ -522,6 +533,29 @@ def parse_args() -> argparse.Namespace:
         help="Replace generator Linear layers with TurboDiffusion W8A8 Int8Linear modules.",
     )
     parser.add_argument(
+        "--quant_linear_scope",
+        choices=QUANT_LINEAR_SCOPES,
+        default="all",
+        help=(
+            "Linear layers to quantize. all matches TurboDiffusion's broad replacement; "
+            "transformer_blocks matches TurboDiffusion's block-local Linear replacement; "
+            "ffn targets all transformer FeedForward layers; video_ffn targets only video "
+            "FeedForward layers; audio_ffn targets only audio FeedForward layers; "
+            "video_heavy targets video FeedForward plus video self-attention projections; "
+            "non_attention skips attention projections."
+        ),
+    )
+    parser.add_argument(
+        "--quant_linear_backend",
+        choices=QUANT_LINEAR_BACKENDS,
+        default="turbodiffusion",
+        help=(
+            "Backend for --quant_linear. turbodiffusion uses TurboDiffusion Int8Linear; "
+            "torchao_compile uses torchao dynamic W8A8 Linear plus torch.compile; "
+            "tilelang_postscale uses a TileLang post-scale INT8 GEMM prototype."
+        ),
+    )
+    parser.add_argument(
         "--quant_linear_prequantized",
         action="store_true",
         default=False,
@@ -537,9 +571,30 @@ def parse_args() -> argparse.Namespace:
         help="Benchmark generator latency only; do not load VAE or write mp4/wav outputs.",
     )
     parser.add_argument(
+        "--warmup_samples",
+        type=int,
+        default=0,
+        help=(
+            "Run this many generator-only warmup samples before recorded timing. "
+            "Useful for torch.compile/Inductor backends whose first sample "
+            "includes compile/autotune overhead."
+        ),
+    )
+    parser.add_argument(
         "--timing_json",
         default=None,
         help="Optional path to write per-sample generator timing records.",
+    )
+    parser.add_argument(
+        "--profile_cuda_top",
+        action="store_true",
+        default=False,
+        help="Profile the first recorded generator sample and print top CUDA ops.",
+    )
+    parser.add_argument(
+        "--profile_trace",
+        default=None,
+        help="Optional Chrome trace path used with --profile_cuda_top.",
     )
     parser.add_argument(
         "--video_height",
@@ -588,6 +643,8 @@ def main() -> None:
         raise ValueError("--student_checkpoint is required for --model_kind student")
     if args.quant_linear_prequantized and args.model_kind != "student":
         raise ValueError("--quant_linear_prequantized is only supported with --model_kind student")
+    if args.quant_linear_prequantized and args.quant_linear_backend != "turbodiffusion":
+        raise ValueError("--quant_linear_prequantized is only supported with --quant_linear_backend turbodiffusion")
 
     torch.backends.cuda.matmul.allow_tf32 = True
     torch.backends.cudnn.allow_tf32 = True
@@ -653,10 +710,15 @@ def main() -> None:
                 registry=registry,
             ).eval()
             if args.quant_linear_prequantized:
-                prequantized_linear_count = replace_ltx_linears(model, quantize=False)
+                prequantized_linear_count = replace_ltx_linears(
+                    model,
+                    quantize=False,
+                    scope=args.quant_linear_scope,
+                    backend="turbodiffusion",
+                )
                 print(
                     "[TurboT2AV][accel] prepared prequantized Int8Linear "
-                    f"layers={prequantized_linear_count}",
+                    f"layers={prequantized_linear_count} scope={args.quant_linear_scope}",
                     flush=True,
                 )
             _load_generator_state(model, args.student_checkpoint, args.student_strict)
@@ -668,7 +730,10 @@ def main() -> None:
             attention_scope=args.attention_scope,
             fast_norm=args.fast_norm,
             quant_linear=bool(args.quant_linear and not args.quant_linear_prequantized),
+            quant_linear_scope=args.quant_linear_scope,
+            quant_linear_backend=args.quant_linear_backend,
             sla_topk=args.sla_topk,
+            sla_topk_schedule=args.sla_topk_schedule,
             sla_block_q=args.sla_block_q,
             sla_block_k=args.sla_block_k,
         )
@@ -676,6 +741,8 @@ def main() -> None:
             acceleration_report = replace_dataclass(
                 acceleration_report,
                 replaced_linear=prequantized_linear_count + acceleration_report.replaced_linear,
+                quant_linear_scope=args.quant_linear_scope,
+                quant_linear_backend="turbodiffusion",
             )
         print(acceleration_report.format(), flush=True)
 
@@ -739,6 +806,51 @@ def main() -> None:
         )
 
     negative_prompt = str(cfg.negative_prompt)
+    if args.warmup_samples > 0 and indices:
+        print(f"[AVEval] warmup_samples={args.warmup_samples}", flush=True)
+        for warmup_idx in range(int(args.warmup_samples)):
+            prompt_idx = indices[warmup_idx % len(indices)]
+            prompt = prompts[prompt_idx]
+            conditional_dict = text_encoder(text_prompts=[prompt])
+            prompt_seed = int(args.seed) + warmup_idx
+            with torch.random.fork_rng(devices=[device]):
+                torch.manual_seed(prompt_seed)
+                torch.cuda.manual_seed(prompt_seed)
+                torch.cuda.synchronize(device)
+                warmup_start = time.perf_counter()
+                if args.model_kind == "teacher":
+                    unconditional_dict = text_encoder(text_prompts=[negative_prompt])
+                    video_latent, audio_latent = _generate_teacher_sample(
+                        teacher=model,
+                        video_shape=tuple(video_shape),
+                        audio_shape=tuple(audio_shape),
+                        sigmas=sigmas,
+                        conditional_dict=conditional_dict,
+                        unconditional_dict=unconditional_dict,
+                        device=device,
+                        dtype=dtype,
+                        video_cfg=float(getattr(cfg, "teacher_benchmark_video_guidance_scale", 3.0)),
+                        audio_cfg=float(getattr(cfg, "teacher_benchmark_audio_guidance_scale", 5.0)),
+                        mode=args.teacher_mode,
+                    )
+                    del unconditional_dict
+                else:
+                    video_latent, audio_latent = pipeline.generate(
+                        video_shape=tuple(video_shape),
+                        audio_shape=tuple(audio_shape),
+                        conditional_dict=conditional_dict,
+                    )
+                torch.cuda.synchronize(device)
+                warmup_elapsed = time.perf_counter() - warmup_start
+            del conditional_dict, video_latent, audio_latent
+            torch.cuda.empty_cache()
+            print(
+                f"[AVEval] warmup index={prompt_idx} "
+                f"{warmup_idx + 1}/{args.warmup_samples} seed={prompt_seed} "
+                f"gen={warmup_elapsed:.2f}s",
+                flush=True,
+            )
+
     start = time.perf_counter()
     total_tasks = len(indices) * int(args.num_seeds)
     completed_tasks = 0
@@ -779,28 +891,44 @@ def main() -> None:
                 torch.cuda.manual_seed(prompt_seed)
                 torch.cuda.synchronize(device)
                 gen_start = time.perf_counter()
-                if args.model_kind == "teacher":
-                    unconditional_dict = text_encoder(text_prompts=[negative_prompt])
-                    video_latent, audio_latent = _generate_teacher_sample(
-                        teacher=model,
+                def run_generator_sample() -> tuple[torch.Tensor, torch.Tensor]:
+                    if args.model_kind == "teacher":
+                        unconditional_dict = text_encoder(text_prompts=[negative_prompt])
+                        try:
+                            return _generate_teacher_sample(
+                                teacher=model,
+                                video_shape=tuple(video_shape),
+                                audio_shape=tuple(audio_shape),
+                                sigmas=sigmas,
+                                conditional_dict=conditional_dict,
+                                unconditional_dict=unconditional_dict,
+                                device=device,
+                                dtype=dtype,
+                                video_cfg=float(getattr(cfg, "teacher_benchmark_video_guidance_scale", 3.0)),
+                                audio_cfg=float(getattr(cfg, "teacher_benchmark_audio_guidance_scale", 5.0)),
+                                mode=args.teacher_mode,
+                            )
+                        finally:
+                            del unconditional_dict
+                    return pipeline.generate(
                         video_shape=tuple(video_shape),
                         audio_shape=tuple(audio_shape),
-                        sigmas=sigmas,
                         conditional_dict=conditional_dict,
-                        unconditional_dict=unconditional_dict,
-                        device=device,
-                        dtype=dtype,
-                        video_cfg=float(getattr(cfg, "teacher_benchmark_video_guidance_scale", 3.0)),
-                        audio_cfg=float(getattr(cfg, "teacher_benchmark_audio_guidance_scale", 5.0)),
-                        mode=args.teacher_mode,
                     )
-                    del unconditional_dict
+
+                if args.profile_cuda_top and not timing_records:
+                    activities = [torch.profiler.ProfilerActivity.CPU, torch.profiler.ProfilerActivity.CUDA]
+                    with torch.profiler.profile(activities=activities, record_shapes=True) as prof:
+                        video_latent, audio_latent = run_generator_sample()
+                    print(
+                        prof.key_averages().table(sort_by="cuda_time_total", row_limit=35),
+                        flush=True,
+                    )
+                    if args.profile_trace:
+                        prof.export_chrome_trace(args.profile_trace)
+                        print(f"[AVEval][profile] wrote {args.profile_trace}", flush=True)
                 else:
-                    video_latent, audio_latent = pipeline.generate(
-                        video_shape=tuple(video_shape),
-                        audio_shape=tuple(audio_shape),
-                        conditional_dict=conditional_dict,
-                    )
+                    video_latent, audio_latent = run_generator_sample()
                 torch.cuda.synchronize(device)
                 gen_elapsed = time.perf_counter() - gen_start
 
@@ -812,8 +940,12 @@ def main() -> None:
                     "sample": sample_stem,
                     "attention_type": args.attention_type,
                     "attention_scope": args.attention_scope,
+                    "sla_topk": args.sla_topk,
+                    "sla_topk_schedule": args.sla_topk_schedule,
                     "fast_norm": bool(args.fast_norm),
                     "quant_linear": bool(args.quant_linear or args.quant_linear_prequantized),
+                    "quant_linear_scope": args.quant_linear_scope,
+                    "quant_linear_backend": args.quant_linear_backend,
                     "quant_linear_prequantized": bool(args.quant_linear_prequantized),
                     "generator_seconds": gen_elapsed,
                 }

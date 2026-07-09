@@ -64,7 +64,9 @@ class BatchedPerturbationConfig:
 
         return mask
 
-    def mask_like(self, perturbation_type: PerturbationType, block: int, values: torch.Tensor) -> torch.Tensor:
+    def mask_like(self, perturbation_type: PerturbationType, block: int, values: torch.Tensor) -> torch.Tensor | float:
+        if not self.any_in_batch(perturbation_type, block):
+            return 1.0
         mask = self.mask(perturbation_type, block, values.device, values.dtype)
         return mask.view(mask.numel(), *([1] * len(values.shape[1:])))
 

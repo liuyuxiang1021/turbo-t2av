@@ -74,7 +74,8 @@ pixi run install-local
 ```
 
 Optional inference acceleration uses SageAttention/SageSLA plus
-TurboDiffusion's fused norm kernels:
+TurboDiffusion's fused norm kernels. The fastest measured path additionally
+uses TileLang W8A8 Linear replacement for transformer GEMMs.
 
 ```bash
 pixi run install-sageattention
@@ -94,6 +95,18 @@ pixi run install-spargeattn
 
 To use a local checkout, set `SPARGEATTN_PACKAGE=/path/to/SpargeAttn` before
 running the task.
+
+Recommended TileLang W8A8 Linear acceleration uses TileLang:
+
+```bash
+pixi run install-tilelang
+```
+
+Experimental compiled W8A8 Linear acceleration can also use torchao:
+
+```bash
+pixi run install-torchao
+```
 
 FastNorm and SLA are loaded from the parent TurboDiffusion checkout. If
 TurboT2AV is not checked out inside TurboDiffusion, add TurboDiffusion to
@@ -217,56 +230,121 @@ PYTHONPATH=/path/to/TurboDiffusion:/path/to/TurboDiffusion/turbodiffusion:packag
   --num_prompts 8 \
   --attention_type sagesla \
   --attention_scope self \
-  --sla_topk 1.0 \
-  --fast_norm
+  --sla_topk 0.3 \
+  --fast_norm \
+  --quant_linear \
+  --quant_linear_scope all \
+  --quant_linear_backend tilelang_postscale
 ```
 
-`--sla_topk 1.0` is the quality-first default for TurboT2AV. Lower values such
-as `0.8`, `0.6`, `0.4`, or `0.3` are faster on long video sequences, but they
-change generated content more visibly because SLA is a sparse-linear attention
-approximation, not a numerically equivalent dense-attention kernel.
+`--sla_topk 1.0` is the quality-first dense-block default for TurboT2AV.
+Lower values such as `0.8`, `0.6`, `0.4`, or `0.3` are faster on long video
+sequences, but they change generated content more visibly because SLA is a
+sparse-linear attention approximation, not a numerically equivalent
+dense-attention kernel. The current speed/quality tradeoff used for the H20
+figures is `--sla_topk 0.3`.
 
-H20 generator-only measurements at `512x768`, 121 frames, 4 prompts:
+For finer control, `--sla_topk_schedule` can set different top-k ratios by
+transformer layer. Unmatched layers fall back to `--sla_topk`:
 
-| Path | Generator timing | Notes |
-| --- | ---: | --- |
-| 40-step teacher | 55.05s/video | Stage-3/rCM median from previous teacher benchmark logs. |
-| 4-step student, default attention | 2.53s/video | Normal TurboT2AV inference path. |
-| 4-step student, SageAttention self + FastNorm | 2.17s/video | Current accelerated path, about 1.16x over default attention. |
+```bash
+--sla_topk 0.3 --sla_topk_schedule 0-15:0.35,16-31:0.3,32-47:0.25
+```
 
-Against the accelerated 4-step student, the 40-step teacher is about 25.3x
-slower by per-video generator time.
+This is useful when early layers need denser attention for quality while later
+layers can use a more aggressive sparse pattern for speed. In 512x768 H20
+tests, layer schedules only improved generator time by about 1% over uniform
+`topk=0.3`, so uniform `topk=0.3` remains the recommended default unless a
+target workload validates a better schedule.
 
-The acceleration gain over default student inference is modest because the
-default LTX path already uses an efficient attention backend, TurboT2AV's
-`512x768` latent sequence is shorter than large 720p video-only benchmarks, and
-non-attention work remains unchanged.
+### Experimental W8A8 Linear Quantization
 
-H20 SageSLA top-k sweep at `704x1280`, 121 frames, first 4 prompts, no SLA
-adapter checkpoint:
+W8A8 is available as an opt-in experiment:
 
-| Path | Median generator time | Speedup vs default | Video MAE vs default | Notes |
-| --- | ---: | ---: | ---: | --- |
-| default + FastNorm | 5.99s/video | 1.00x | 0.00/255 | Dense attention baseline. |
-| SageSLA topk=0.8 + FastNorm | 5.29s/video | 1.13x | 17.02/255 | Faster, but visible content changes. |
-| SageSLA topk=0.9 + FastNorm | 5.37s/video | 1.12x | 15.70/255 | Slightly more conservative. |
-| SageSLA topk=1.0 + FastNorm | 5.45s/video | 1.10x | 9.00/255 | Recommended quality-first SLA setting. |
+```bash
+--quant_linear --quant_linear_scope all --quant_linear_backend tilelang_postscale
+```
 
-At a larger `1024x1792` stress-test resolution, the latent sequence length grows
-to 229,376 self-attention tokens. On the same first 4 prompts, SageSLA
-`topk=0.4` improves median generator time from 15.97s/video to 10.58s/video
-(1.51x), but mean video MAE rises to 31.55/255 versus default. This setting is
-useful for speed experiments, but the quality shift is visible.
+`--quant_linear_scope all` matches the broad TurboDiffusion-style replacement,
+`ffn` targets all transformer feed-forward Linear layers, `video_ffn` targets
+only video feed-forward Linear layers, `audio_ffn` targets only audio
+feed-forward Linear layers, and `non_attention` skips attention projection
+layers. The recommended H20 backend is `tilelang_postscale`, which stores W8
+weights once and dynamically quantizes activations to A8 before a TileLang INT8
+GEMM.
 
-On a 10-prompt `1024x1792` quality check, `topk=0.3` improved median generator
-time from 15.98s/video to 10.28s/video (1.56x), with mean video MAE 25.91/255
-and mean PSNR 17.26 dB versus default. In high-resolution settings, `topk=0.3`
-is a reasonable speed/quality tradeoff when exact dense-attention parity is not
-required.
+To make a strict TurboDiffusion-style prequantized checkpoint, first save a
+student state dict whose selected Linear layers already contain `int8_weight`
+and `scale` buffers:
 
-These SageSLA numbers are lower than TurboDiffusion's Wan2.1 720p SageSLA
-speedups because TurboT2AV has a much shorter latent sequence and only the
-selected self-attention modules are replaced.
+```bash
+python -m ltx_distillation.tools.prequantize_av_student \
+  --student_checkpoint /path/to/model.pth \
+  --output_path /path/to/model_w8a8_video_ffn_prequant.pth \
+  --quant_linear_scope video_ffn
+```
+
+Then load it with:
+
+```bash
+--quant_linear_prequantized --quant_linear_scope video_ffn
+```
+
+`--quant_linear_backend turbodiffusion` uses TurboDiffusion's strict
+`Int8Linear` kernel. In strict mode the selected weights are stored once as
+`int8_weight` plus `scale` buffers, and each forward uses TurboDiffusion
+`quant_cuda` for A8 activation quantization followed by
+`gemm_cuda_swizzle_bias`. This is not fake quantization and it does not
+recompress weights on every forward, but the strict backend was slower than
+BF16 cuBLASLt for TurboT2AV's H20 FFN shapes. The integrated speed path uses
+`tilelang_postscale` instead.
+
+FFN layers are large dense `W*x+b` GEMMs, so INT8 can reduce weight bandwidth
+and GEMM cost. Attention projection layers also contain GEMMs, but the
+attention block is dominated by QKV reshaping, layout changes, softmax/masking,
+and KV reads, so quantizing those projections is less likely to improve
+end-to-end runtime. TurboDiffusion W8A8 is not enabled by default. The compiled
+torchao backend is also not default because it adds a dependency and a
+first-sample compile cost.
+
+H20 generator-only measurements use `--skip_decode`, one common warmup sample,
+121 frames, and the same student checkpoint. The current recommended stack is
+SageSLA self-attention with `topk=0.3`, FastNorm, text-context trimming, fused
+Ada/RoPE helpers, and TileLang post-scale W8A8 Linear.
+
+| Resolution | Path | Median generator time | Speedup vs pure default | Notes |
+| --- | --- | ---: | ---: | --- |
+| `512x768` | pure default | 2.468s/video | 1.00x | No TurboDiffusion acceleration. |
+| `512x768` | SageSLA `topk=0.3` + FastNorm + TileLang W8A8 | 1.19s/video | 2.07x | 96 self-attention modules and 1370 Linear modules replaced. |
+| `1024x1792` | pure default | 16.70s/video | 1.00x | Stress-test resolution; video latent is `[1,16,128,32,56]`. |
+| `1024x1792` | SageSLA `topk=0.3` + FastNorm + TileLang W8A8 | 5.82s/video | 2.87x | Quality/speed tradeoff used for visual checks. |
+| `1024x1792` | SageSLA `topk=0.2` + FastNorm + TileLang W8A8 | 5.50s/video | 3.04x | Faster, with more sparse attention approximation. |
+
+SageSLA affects quality because it sparsifies self-attention. Earlier decoded
+visual checks showed `topk=0.3` is the safer high-resolution tradeoff, while
+`topk=0.2` is useful when speed is prioritized. Lower top-k values should be
+rechecked visually for the target prompt distribution.
+
+Component-level H20 validation:
+
+| Component | Shape / setting | Dense or BF16 baseline | Accelerated path | Speedup |
+| --- | --- | ---: | ---: | ---: |
+| Self-attention | `512x768`, 6144 video tokens | SDPA 1.798ms | SageSLA `topk=0.3` 0.983ms | 1.83x |
+| Self-attention | `512x768`, 6144 video tokens | SDPA 1.798ms | SageSLA `topk=0.2` 0.915ms | 1.97x |
+| Self-attention | `1024x1792`, 28672 video tokens | SDPA 37.70ms | SageSLA `topk=0.3` 7.818ms | 4.82x |
+| Self-attention | `1024x1792`, 28672 video tokens | SDPA 37.70ms | SageSLA `topk=0.2` 6.229ms | 6.05x |
+| TileLang W8A8 GEMM | `M=28672,N=16384,K=4096` | BF16 5.281ms | W8A8 + A8 quant 3.375ms | 1.56x |
+| TileLang W8A8 GEMM | `M=28672,N=4096,K=16384` | BF16 5.456ms | W8A8 + A8 quant 3.397ms | 1.61x |
+| TileLang W8A8 GEMM | `M=6144,N=16384,K=4096` | BF16 1.096ms | W8A8 + A8 quant 0.774ms | 1.42x |
+| TileLang W8A8 GEMM | `M=6144,N=4096,K=16384` | BF16 1.012ms | W8A8 + A8 quant 0.650ms | 1.56x |
+
+The strict TurboDiffusion `Int8Linear` backend precompresses weights correctly,
+but was slower than BF16 cuBLASLt on this H20 setup for TurboT2AV FFN shapes.
+The integrated W8A8 path therefore uses the TileLang post-scale kernel, which
+keeps INT8 accumulation continuous over K and applies activation/weight scales
+in the epilogue. Text K/V caching was also tested as an experimental switch
+(`TURBOT2AV_CACHE_TEXT_KV=1`), but it did not change measured generator time and
+is off by default.
 
 `--prompts_file` supports CSV (`video_id,prompt`) or plain text (one prompt per line).
 

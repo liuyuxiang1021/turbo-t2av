@@ -18,6 +18,82 @@ class TransformerConfig:
     context_dim: int
 
 
+def modulated_rms_norm(
+    x: torch.Tensor,
+    scale: torch.Tensor,
+    shift: torch.Tensor,
+    eps: float,
+) -> torch.Tensor:
+    return rms_norm(x, eps=eps) * (1 + scale) + shift
+
+
+def modulate(x: torch.Tensor, scale: torch.Tensor, shift: torch.Tensor) -> torch.Tensor:
+    return x * (1 + scale) + shift
+
+
+def gated_residual(
+    x: torch.Tensor,
+    residual: torch.Tensor,
+    gate: torch.Tensor,
+    mask: torch.Tensor | float = 1.0,
+) -> torch.Tensor:
+    if isinstance(mask, float):
+        return torch.addcmul(x, residual, gate)
+    return x + residual * gate * mask
+
+
+def _ada_value(
+    scale_shift_table: torch.Tensor,
+    timestep: torch.Tensor,
+    batch_size: int,
+    index: int,
+    num_ada_params: int,
+) -> torch.Tensor:
+    timestep_values = timestep.reshape(batch_size, timestep.shape[1], num_ada_params, -1)
+    table_value = scale_shift_table[index].unsqueeze(0).unsqueeze(0).to(device=timestep.device, dtype=timestep.dtype)
+    return table_value + timestep_values[:, :, index, :]
+
+
+def modulated_rms_norm_from_ada(
+    x: torch.Tensor,
+    scale_shift_table: torch.Tensor,
+    timestep: torch.Tensor,
+    scale_index: int,
+    shift_index: int,
+    num_ada_params: int,
+    eps: float,
+) -> torch.Tensor:
+    scale = _ada_value(scale_shift_table, timestep, x.shape[0], scale_index, num_ada_params)
+    shift = _ada_value(scale_shift_table, timestep, x.shape[0], shift_index, num_ada_params)
+    return modulated_rms_norm(x, scale, shift, eps)
+
+
+def modulate_from_ada(
+    x: torch.Tensor,
+    scale_shift_table: torch.Tensor,
+    timestep: torch.Tensor,
+    scale_index: int,
+    shift_index: int,
+    num_ada_params: int,
+) -> torch.Tensor:
+    scale = _ada_value(scale_shift_table, timestep, x.shape[0], scale_index, num_ada_params)
+    shift = _ada_value(scale_shift_table, timestep, x.shape[0], shift_index, num_ada_params)
+    return modulate(x, scale, shift)
+
+
+def gated_residual_from_ada(
+    x: torch.Tensor,
+    residual: torch.Tensor,
+    scale_shift_table: torch.Tensor,
+    timestep: torch.Tensor,
+    gate_index: int,
+    num_ada_params: int,
+    mask: torch.Tensor | float = 1.0,
+) -> torch.Tensor:
+    gate = _ada_value(scale_shift_table, timestep, x.shape[0], gate_index, num_ada_params)
+    return gated_residual(x, residual, gate, mask)
+
+
 class BasicAVTransformerBlock(torch.nn.Module):
     def __init__(
         self,
@@ -158,121 +234,160 @@ class BasicAVTransformerBlock(torch.nn.Module):
         run_v2a = run_ax and (video is not None and vx.numel() > 0)
 
         if run_vx:
-            vshift_msa, vscale_msa, vgate_msa = self.get_ada_values(
-                self.scale_shift_table, vx.shape[0], video.timesteps, slice(0, 3)
-            )
             if not perturbations.all_in_batch(PerturbationType.SKIP_VIDEO_SELF_ATTN, self.idx):
-                norm_vx = rms_norm(vx, eps=self.norm_eps) * (1 + vscale_msa) + vshift_msa
+                norm_vx = modulated_rms_norm_from_ada(
+                    vx,
+                    self.scale_shift_table,
+                    video.timesteps,
+                    scale_index=1,
+                    shift_index=0,
+                    num_ada_params=6,
+                    eps=self.norm_eps,
+                )
                 v_mask = perturbations.mask_like(PerturbationType.SKIP_VIDEO_SELF_ATTN, self.idx, vx)
-                vx = vx + self.attn1(norm_vx, pe=video.positional_embeddings) * vgate_msa * v_mask
+                vx = gated_residual_from_ada(
+                    vx,
+                    self.attn1(norm_vx, pe=video.positional_embeddings),
+                    self.scale_shift_table,
+                    video.timesteps,
+                    gate_index=2,
+                    num_ada_params=6,
+                    mask=v_mask,
+                )
 
             vx = vx + self.attn2(rms_norm(vx, eps=self.norm_eps), context=video.context, mask=video.context_mask)
 
-            del vshift_msa, vscale_msa, vgate_msa
-
         if run_ax:
-            ashift_msa, ascale_msa, agate_msa = self.get_ada_values(
-                self.audio_scale_shift_table, ax.shape[0], audio.timesteps, slice(0, 3)
-            )
-
             if not perturbations.all_in_batch(PerturbationType.SKIP_AUDIO_SELF_ATTN, self.idx):
-                norm_ax = rms_norm(ax, eps=self.norm_eps) * (1 + ascale_msa) + ashift_msa
+                norm_ax = modulated_rms_norm_from_ada(
+                    ax,
+                    self.audio_scale_shift_table,
+                    audio.timesteps,
+                    scale_index=1,
+                    shift_index=0,
+                    num_ada_params=6,
+                    eps=self.norm_eps,
+                )
                 a_mask = perturbations.mask_like(PerturbationType.SKIP_AUDIO_SELF_ATTN, self.idx, ax)
-                ax = ax + self.audio_attn1(norm_ax, pe=audio.positional_embeddings) * agate_msa * a_mask
+                ax = gated_residual_from_ada(
+                    ax,
+                    self.audio_attn1(norm_ax, pe=audio.positional_embeddings),
+                    self.audio_scale_shift_table,
+                    audio.timesteps,
+                    gate_index=2,
+                    num_ada_params=6,
+                    mask=a_mask,
+                )
 
             ax = ax + self.audio_attn2(rms_norm(ax, eps=self.norm_eps), context=audio.context, mask=audio.context_mask)
-
-            del ashift_msa, ascale_msa, agate_msa
 
         # Audio - Video cross attention.
         if run_a2v or run_v2a:
             vx_norm3 = rms_norm(vx, eps=self.norm_eps)
             ax_norm3 = rms_norm(ax, eps=self.norm_eps)
 
-            (
-                scale_ca_audio_hidden_states_a2v,
-                shift_ca_audio_hidden_states_a2v,
-                scale_ca_audio_hidden_states_v2a,
-                shift_ca_audio_hidden_states_v2a,
-                gate_out_v2a,
-            ) = self.get_av_ca_ada_values(
-                self.scale_shift_table_a2v_ca_audio,
-                ax.shape[0],
-                audio.cross_scale_shift_timestep,
-                audio.cross_gate_timestep,
-            )
-
-            (
-                scale_ca_video_hidden_states_a2v,
-                shift_ca_video_hidden_states_a2v,
-                scale_ca_video_hidden_states_v2a,
-                shift_ca_video_hidden_states_v2a,
-                gate_out_a2v,
-            ) = self.get_av_ca_ada_values(
-                self.scale_shift_table_a2v_ca_video,
-                vx.shape[0],
-                video.cross_scale_shift_timestep,
-                video.cross_gate_timestep,
-            )
-
             if run_a2v and not perturbations.all_in_batch(PerturbationType.SKIP_A2V_CROSS_ATTN, self.idx):
-                vx_scaled = vx_norm3 * (1 + scale_ca_video_hidden_states_a2v) + shift_ca_video_hidden_states_a2v
-                ax_scaled = ax_norm3 * (1 + scale_ca_audio_hidden_states_a2v) + shift_ca_audio_hidden_states_a2v
+                vx_scaled = modulate_from_ada(
+                    vx_norm3,
+                    self.scale_shift_table_a2v_ca_video,
+                    video.cross_scale_shift_timestep,
+                    scale_index=0,
+                    shift_index=1,
+                    num_ada_params=4,
+                )
+                ax_scaled = modulate_from_ada(
+                    ax_norm3,
+                    self.scale_shift_table_a2v_ca_audio,
+                    audio.cross_scale_shift_timestep,
+                    scale_index=0,
+                    shift_index=1,
+                    num_ada_params=4,
+                )
                 a2v_mask = perturbations.mask_like(PerturbationType.SKIP_A2V_CROSS_ATTN, self.idx, vx)
-                vx = vx + (
+                vx = gated_residual_from_ada(
+                    vx,
                     self.audio_to_video_attn(
                         vx_scaled,
                         context=ax_scaled,
                         pe=video.cross_positional_embeddings,
                         k_pe=audio.cross_positional_embeddings,
-                    )
-                    * gate_out_a2v
-                    * a2v_mask
+                    ),
+                    self.scale_shift_table_a2v_ca_video[4:],
+                    video.cross_gate_timestep,
+                    gate_index=0,
+                    num_ada_params=1,
+                    mask=a2v_mask,
                 )
 
             if run_v2a and not perturbations.all_in_batch(PerturbationType.SKIP_V2A_CROSS_ATTN, self.idx):
-                ax_scaled = ax_norm3 * (1 + scale_ca_audio_hidden_states_v2a) + shift_ca_audio_hidden_states_v2a
-                vx_scaled = vx_norm3 * (1 + scale_ca_video_hidden_states_v2a) + shift_ca_video_hidden_states_v2a
+                ax_scaled = modulate_from_ada(
+                    ax_norm3,
+                    self.scale_shift_table_a2v_ca_audio,
+                    audio.cross_scale_shift_timestep,
+                    scale_index=2,
+                    shift_index=3,
+                    num_ada_params=4,
+                )
+                vx_scaled = modulate_from_ada(
+                    vx_norm3,
+                    self.scale_shift_table_a2v_ca_video,
+                    video.cross_scale_shift_timestep,
+                    scale_index=2,
+                    shift_index=3,
+                    num_ada_params=4,
+                )
                 v2a_mask = perturbations.mask_like(PerturbationType.SKIP_V2A_CROSS_ATTN, self.idx, ax)
-                ax = ax + (
+                ax = gated_residual_from_ada(
+                    ax,
                     self.video_to_audio_attn(
                         ax_scaled,
                         context=vx_scaled,
                         pe=audio.cross_positional_embeddings,
                         k_pe=video.cross_positional_embeddings,
-                    )
-                    * gate_out_v2a
-                    * v2a_mask
+                    ),
+                    self.scale_shift_table_a2v_ca_audio[4:],
+                    audio.cross_gate_timestep,
+                    gate_index=0,
+                    num_ada_params=1,
+                    mask=v2a_mask,
                 )
 
-            del gate_out_a2v, gate_out_v2a
-            del (
-                scale_ca_video_hidden_states_a2v,
-                shift_ca_video_hidden_states_a2v,
-                scale_ca_audio_hidden_states_a2v,
-                shift_ca_audio_hidden_states_a2v,
-                scale_ca_video_hidden_states_v2a,
-                shift_ca_video_hidden_states_v2a,
-                scale_ca_audio_hidden_states_v2a,
-                shift_ca_audio_hidden_states_v2a,
-            )
-
         if run_vx:
-            vshift_mlp, vscale_mlp, vgate_mlp = self.get_ada_values(
-                self.scale_shift_table, vx.shape[0], video.timesteps, slice(3, None)
+            vx_scaled = modulated_rms_norm_from_ada(
+                vx,
+                self.scale_shift_table,
+                video.timesteps,
+                scale_index=4,
+                shift_index=3,
+                num_ada_params=6,
+                eps=self.norm_eps,
             )
-            vx_scaled = rms_norm(vx, eps=self.norm_eps) * (1 + vscale_mlp) + vshift_mlp
-            vx = vx + self.ff(vx_scaled) * vgate_mlp
-
-            del vshift_mlp, vscale_mlp, vgate_mlp
+            vx = gated_residual_from_ada(
+                vx,
+                self.ff(vx_scaled),
+                self.scale_shift_table,
+                video.timesteps,
+                gate_index=5,
+                num_ada_params=6,
+            )
 
         if run_ax:
-            ashift_mlp, ascale_mlp, agate_mlp = self.get_ada_values(
-                self.audio_scale_shift_table, ax.shape[0], audio.timesteps, slice(3, None)
+            ax_scaled = modulated_rms_norm_from_ada(
+                ax,
+                self.audio_scale_shift_table,
+                audio.timesteps,
+                scale_index=4,
+                shift_index=3,
+                num_ada_params=6,
+                eps=self.norm_eps,
             )
-            ax_scaled = rms_norm(ax, eps=self.norm_eps) * (1 + ascale_mlp) + ashift_mlp
-            ax = ax + self.audio_ff(ax_scaled) * agate_mlp
-
-            del ashift_mlp, ascale_mlp, agate_mlp
+            ax = gated_residual_from_ada(
+                ax,
+                self.audio_ff(ax_scaled),
+                self.audio_scale_shift_table,
+                audio.timesteps,
+                gate_index=5,
+                num_ada_params=6,
+            )
 
         return replace(video, x=vx) if video is not None else None, replace(audio, x=ax) if audio is not None else None

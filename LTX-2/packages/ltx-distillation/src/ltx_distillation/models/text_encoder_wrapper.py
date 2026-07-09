@@ -5,6 +5,7 @@ Provides a simple interface for text encoding without prompt enhancement.
 Just pure text -> context embedding conversion.
 """
 
+import os
 from typing import List, Dict, Any, Optional
 import torch
 import torch.nn as nn
@@ -75,6 +76,15 @@ class GemmaTextEncoderWrapper(nn.Module):
         video_context = torch.cat(video_contexts, dim=0)
         audio_context = torch.cat(audio_contexts, dim=0)
         attention_mask = torch.cat(attention_masks, dim=0)
+        if (
+            os.environ.get("TURBOT2AV_TRIM_TEXT_CONTEXT", "1").lower() not in {"0", "false", "no"}
+            and attention_mask.shape[0] == 1
+        ):
+            valid_tokens = attention_mask[0].bool()
+            if valid_tokens.any():
+                video_context = video_context[:, valid_tokens, :]
+                audio_context = audio_context[:, valid_tokens, :]
+                attention_mask = None
 
         return {
             "video_context": video_context,
