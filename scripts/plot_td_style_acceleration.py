@@ -21,9 +21,10 @@ FONT_CANDIDATES = [
 
 def font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
     names = ["DejaVuSans-Bold.ttf", "DejaVuSans.ttf"] if bold else ["DejaVuSans.ttf", "DejaVuSans-Bold.ttf"]
-    for candidate in FONT_CANDIDATES:
-        if candidate.name in names and candidate.exists():
-            return ImageFont.truetype(str(candidate), size=size)
+    for name in names:
+        for candidate in FONT_CANDIDATES:
+            if candidate.name == name and candidate.exists():
+                return ImageFont.truetype(str(candidate), size=size)
     for candidate in FONT_CANDIDATES:
         if candidate.exists():
             return ImageFont.truetype(str(candidate), size=size)
@@ -141,13 +142,12 @@ def draw_latency_figure(
     red = (153, 9, 36)
     teal = (39, 132, 118)
 
-    title_font = font(s(35), bold=True)
+    title_font = font(s(30), bold=True)
     label_font = font(s(35))
     label_bold_font = font(s(35), bold=True)
     value_font = font(s(40))
     ratio_font = font(s(31))
     axis_font = font(s(40), bold=True)
-    small_font = font(s(24))
 
     x0 = 500
     max_width = 1410
@@ -168,15 +168,24 @@ def draw_latency_figure(
     for y in range(505, 610, 22):
         draw.line((s(final_x), s(y), s(final_x), s(y + 10)), fill=black, width=s(3))
 
+    label_right = 470
     for idx, (label, value, y) in enumerate(zip(labels, latencies, y_centers)):
         color = gray if idx == 0 else red
-        label_font_used = title_font if idx == 0 else label_font
         if "(final version)" in label:
             lines = label.split("\n")
-            draw_text(draw, p(72, y - 46), lines[0], label_font, black)
-            draw_text(draw, p(192, y - 4), lines[1], label_bold_font, black)
+            draw_text(draw, p(label_right, y - 46), lines[0], label_font, black, anchor="ra")
+            draw_text(draw, p(label_right, y - 4), lines[1], label_bold_font, black, anchor="ra")
+        elif idx == 0 and "\n" in label:
+            lines = label.split("\n")
+            draw_text(draw, p(label_right, y - 38), lines[0], title_font, black, anchor="ra")
+            draw_text(draw, p(label_right, y), lines[1], label_font, black, anchor="ra")
+        elif "\n" in label:
+            lines = label.split("\n")
+            draw_text(draw, p(label_right, y - 38), lines[0], label_font, black, anchor="ra")
+            draw_text(draw, p(label_right, y), lines[1], label_font, black, anchor="ra")
         else:
-            draw_text(draw, p(28 if idx == 0 else 74, y - 18 if "\n" not in label else y - 38), label, label_font_used, black)
+            label_font_used = title_font if idx == 0 else label_font
+            draw_text(draw, p(label_right, y - 18), label, label_font_used, black, anchor="ra")
         x_end = x_for(value)
         draw.rectangle((s(x0), s(y - bar_h / 2), s(x_end), s(y + bar_h / 2)), fill=color)
 
@@ -188,14 +197,14 @@ def draw_latency_figure(
         draw_text(draw, p(tx, y - 22), value_text, value_font, black)
 
     # TD-style curved stage arrows, placed in whitespace so labels remain clear.
-    top_start = (x_for(latencies[0]) - 420, y_centers[1] + 20)
-    top_end = (x_for(latencies[1]) + 26, y_centers[1] + 32)
-    top_curve = bezier(top_start, (top_start[0] + 90, top_start[1] + 84), (top_end[0] + 135, top_end[1] + 64), top_end)
+    top_start = (x_for(latencies[0]) - 18, y_centers[0] + 72)
+    top_end = (x_for(latencies[1]) + 118, y_centers[1] + 28)
+    top_curve = bezier(top_start, (top_start[0] + 12, top_start[1] + 92), (top_end[0] + 142, top_end[1] + 72), top_end)
     draw_curve_arrow(draw, [p(x, y) for x, y in top_curve], teal, width=s(5), head=s(18))
-    draw_text(draw, p((top_start[0] + top_end[0]) / 2 + 105, y_centers[1] + 48), speedups[0], ratio_font, teal)
+    draw_text(draw, p(top_end[0] + 112, top_end[1] + 34), speedups[0], ratio_font, teal)
 
-    middle_start = (x_for(latencies[1]) - 22, y_centers[1] + 58)
-    middle_end = (x_for(latencies[2]) + 46, y_centers[2] + 2)
+    middle_start = (x_for(latencies[1]) + 118, y_centers[1] + 64)
+    middle_end = (x_for(latencies[2]) + 136, y_centers[2] + 2)
     middle_curve = bezier(
         middle_start,
         (middle_start[0] - 320, middle_start[1] + 100),
@@ -203,10 +212,10 @@ def draw_latency_figure(
         middle_end,
     )
     draw_curve_arrow(draw, [p(x, y) for x, y in middle_curve], teal, width=s(5), head=s(18))
-    draw_text(draw, p((middle_start[0] + middle_end[0]) / 2 - 35, y_centers[2] - 44), speedups[1], ratio_font, teal)
+    draw_text(draw, p((middle_start[0] + middle_end[0]) / 2 - 30, y_centers[2] - 44), speedups[1], ratio_font, teal)
 
-    small_start = (x_for(latencies[2]) + 142, y_centers[2] + 30)
-    small_end = (x_for(latencies[3]) + 150, y_centers[3] + 8)
+    small_start = (x_for(latencies[2]) + 136, y_centers[2] + 32)
+    small_end = (x_for(latencies[3]) + 136, y_centers[3] + 8)
     small_curve = bezier(small_start, (small_start[0] + 36, small_start[1] + 58), (small_end[0] + 54, small_end[1] - 34), small_end)
     draw_curve_arrow(draw, [p(x, y) for x, y in small_curve], teal, width=s(5), head=s(17))
     draw_text(draw, p(small_end[0] + 46, y_centers[3] - 26), speedups[2], ratio_font, teal)
@@ -218,7 +227,7 @@ def draw_latency_figure(
 
     axis_label = "Generation latency (s) on a Single H20"
     tw, _ = text_size(draw, axis_label, axis_font)
-    draw_text(draw, p((width - tw / scale) / 2 + 130, 675), axis_label, axis_font, black)
+    draw_text(draw, p(width / 2, 675), axis_label, axis_font, black, anchor="ma")
 
     img = img.resize((width, height), Image.Resampling.LANCZOS)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -227,7 +236,7 @@ def draw_latency_figure(
 
 def main() -> None:
     labels = [
-        "LTX-2-teacher-512x768",
+        "LTX-2-19B-512x768\n(40-step teacher)",
         "+ W8A8 & FusedNorm",
         "+ rCM\n(4-step student)",
         "+ SageSLA\n(final version)",
@@ -241,7 +250,7 @@ def main() -> None:
         output=ASSET_DIR / "turbot2av_td_style_no_cpuoffload_512x768.png",
     )
     labels_high_res = [
-        "LTX-2-teacher-1024x1792",
+        "LTX-2-19B-1024x1792\n(40-step teacher)",
         "+ W8A8 & FusedNorm",
         "+ rCM\n(4-step student)",
         "+ SageSLA\n(final version)",

@@ -320,11 +320,11 @@ The measured stages are:
 
 | Resolution | Stage | Latency | Speedup vs previous | Speedup vs teacher | What changes |
 | --- | --- | ---: | ---: | ---: | --- |
-| `512x768` | LTX-2-teacher-512x768 | 46.48s | - | 1.00x | Full teacher baseline. |
+| `512x768` | LTX-2-19B-512x768<br>(40-step teacher) | 46.48s | - | 1.00x | Full teacher baseline. |
 | `512x768` | + W8A8 & FastNorm | 27.32s | 1.70x | 1.70x | TileLang W8A8 Linear and FastNorm with default dense attention. |
 | `512x768` | + 4-step student | 2.47s | 11.07x | 18.83x | Distilled TurboT2AV student, still using default dense attention. |
 | `512x768` | + SageSLA final | 1.19s | 2.07x | 39.04x | Student plus SageSLA `topk=0.3`, W8A8/FastNorm, text trimming, and helper fusions. |
-| `1024x1792` | LTX-2-teacher-1024x1792 | 318.74s | - | 1.00x | High-resolution stress-test baseline. |
+| `1024x1792` | LTX-2-19B-1024x1792<br>(40-step teacher) | 318.74s | - | 1.00x | High-resolution stress-test baseline. |
 | `1024x1792` | + W8A8 & FastNorm | 233.34s | 1.37x | 1.37x | TileLang W8A8 Linear and FastNorm with default dense attention. |
 | `1024x1792` | + 4-step student | 16.70s | 13.98x | 19.09x | Distilled TurboT2AV student, still using default dense attention. |
 | `1024x1792` | + SageSLA final | 5.82s | 2.87x | 54.79x | Student plus SageSLA `topk=0.3`, W8A8/FastNorm, text trimming, and helper fusions. |
