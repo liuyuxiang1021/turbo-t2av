@@ -16,7 +16,7 @@ Measured on a single NVIDIA H20 at `1024x1792`:
 | --- | ---: | ---: | ---: | --- |
 | Pure 4-step student | 16.1096s | - | 1.00x | Distilled TurboT2AV student with dense attention. |
 | + W8A8 & FastNorm | 11.7628s | 1.37x | 1.37x | TileLang W8A8 Linear and FastNorm with dense attention. |
-| + SageSLA final | 5.5242s | 2.13x | 2.92x | SageSLA `topk=0.2` self-attention plus W8A8/FastNorm. |
+| + SageSLA final | 5.8689s | 2.00x | 2.75x | SageSLA `topk=0.3` self-attention plus W8A8/FastNorm. |
 
 At this resolution the video latent is `[1,16,128,32,56]`, corresponding to
 28,672 video self-attention tokens. The SageSLA stage is measured against the
@@ -28,7 +28,7 @@ TurboT2AV generates synchronized audio-video from text prompts in 4 steps.
 The demo compares the 40-step teacher with the 4-step student.
 This repository provides single-GPU inference for the distilled checkpoint.
 On an NVIDIA H20 at 1024x1792, generator-only latency is 16.11 seconds/video
-for the pure 4-step student and 5.52 seconds/video for the accelerated student.
+for the pure 4-step student and 5.87 seconds/video for the accelerated student.
 
 Main contributions:
 
@@ -40,8 +40,8 @@ Main contributions:
   audio-video generation model at the 14B-video + 5B-audio scale.
 - Integrates a TurboDiffusion-style inference stack with SageSLA, FastNorm, and
   TileLang W8A8 Linear. On a single NVIDIA H20 at 1024x1792, the final
-  accelerated student is 2.92x faster than the pure 4-step student and the
-  SageSLA stage is 2.13x faster than the W8A8/FastNorm dense-attention stage.
+  accelerated student is 2.75x faster than the pure 4-step student and the
+  SageSLA stage is 2.00x faster than the W8A8/FastNorm dense-attention stage.
 
 <table>
   <thead>
@@ -191,7 +191,7 @@ PYTHONPATH=/path/to/TurboDiffusion:/path/to/TurboDiffusion/turbodiffusion:packag
   --num_prompts 8 \
   --attention_type sagesla \
   --attention_scope self \
-  --sla_topk 0.2 \
+  --sla_topk 0.3 \
   --fast_norm \
   --quant_linear \
   --quant_linear_scope all \
@@ -220,21 +220,21 @@ PYTHONPATH=packages/ltx-distillation/src:packages/ltx-core/src:packages/ltx-pipe
 ```
 
 `--sla_topk 1.0` is the quality-first dense-block default for TurboT2AV.
-Lower values such as `0.8`, `0.6`, `0.4`, or `0.2` are faster on long video
+Lower values such as `0.8`, `0.6`, `0.4`, or `0.3` are faster on long video
 sequences, but they change generated content more visibly because SLA is a
 sparse-linear attention approximation, not a numerically equivalent
 dense-attention kernel. The current speed/quality tradeoff used for the H20
-figures is `--sla_topk 0.2`.
+figures is `--sla_topk 0.3`.
 
 For finer control, `--sla_topk_schedule` can set different top-k ratios by
 transformer layer. Unmatched layers fall back to `--sla_topk`:
 
 ```bash
---sla_topk 0.2 --sla_topk_schedule 0-15:0.25,16-31:0.2,32-47:0.2
+--sla_topk 0.3 --sla_topk_schedule 0-15:0.35,16-31:0.3,32-47:0.3
 ```
 
 This is useful when early layers need denser attention for quality while later
-layers can use a more aggressive sparse pattern for speed. Uniform `topk=0.2`
+layers can use a more aggressive sparse pattern for speed. Uniform `topk=0.3`
 is the reported H20 setting unless a target workload validates a better
 schedule.
 
@@ -290,17 +290,17 @@ first-sample compile cost.
 
 H20 generator-only measurements use `--skip_decode`, one common warmup sample,
 121 frames, and the same student checkpoint. The current recommended stack is
-SageSLA self-attention with `topk=0.2`, FastNorm, text-context trimming, fused
+SageSLA self-attention with `topk=0.3`, FastNorm, text-context trimming, fused
 Ada/RoPE helpers, and TileLang post-scale W8A8 Linear.
 
 | Resolution | Path | Median generator time | Speedup vs previous student stage | Notes |
 | --- | --- | ---: | ---: | --- |
 | `1024x1792` | Pure 4-step student | 16.1096s/video | 1.00x | Dense-attention student baseline. |
 | `1024x1792` | 4-step student + W8A8/FastNorm | 11.7628s/video | 1.37x | TileLang W8A8 Linear and FastNorm with dense attention. |
-| `1024x1792` | SageSLA `topk=0.2` + FastNorm + TileLang W8A8 | 5.5242s/video | 2.13x | 96 self-attention modules and 1370 Linear modules replaced. |
+| `1024x1792` | SageSLA `topk=0.3` + FastNorm + TileLang W8A8 | 5.8689s/video | 2.00x | 96 self-attention modules and 1370 Linear modules replaced. |
 
 SageSLA affects quality because it sparsifies self-attention. Earlier decoded
-visual checks showed `topk=0.2` is a useful high-resolution speed/quality
+visual checks showed `topk=0.3` is a useful high-resolution speed/quality
 tradeoff. Lower top-k values should be rechecked visually for the target prompt
 distribution.
 
@@ -308,7 +308,7 @@ Component-level H20 validation:
 
 | Component | Shape / setting | Dense or BF16 baseline | Accelerated path | Speedup |
 | --- | --- | ---: | ---: | ---: |
-| Self-attention | `1024x1792`, 28672 video tokens | SDPA 37.70ms | SageSLA `topk=0.2` 6.229ms | 6.05x |
+| Self-attention | `1024x1792`, 28672 video tokens | SDPA 37.70ms | SageSLA `topk=0.3` 7.818ms | 4.82x |
 | TileLang W8A8 GEMM | `M=28672,N=16384,K=4096` | BF16 5.281ms | W8A8 + A8 quant 3.375ms | 1.56x |
 | TileLang W8A8 GEMM | `M=28672,N=4096,K=16384` | BF16 5.456ms | W8A8 + A8 quant 3.397ms | 1.61x |
 
