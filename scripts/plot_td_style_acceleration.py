@@ -249,21 +249,6 @@ def main() -> None:
         total_speedup="39x",
         output=ASSET_DIR / "turbot2av_td_style_no_cpuoffload_512x768.png",
     )
-    labels_high_res = [
-        "LTX-2-19B-1024x1792\n(40-step teacher)",
-        "+ W8A8 & FusedNorm",
-        "+ rCM\n(4-step student)",
-        "+ SageSLA\n(final version)",
-    ]
-    draw_latency_figure(
-        title_resolution="1024x1792",
-        labels=labels_high_res,
-        latencies=[318.7405, 233.3424, 16.6961, 5.8173],
-        speedups=["1.37x", "13.98x", "2.87x"],
-        total_speedup="55x",
-        output=ASSET_DIR / "turbot2av_td_style_no_cpuoffload_1024x1792.png",
-    )
-
 
 if __name__ == "__main__":
     main()

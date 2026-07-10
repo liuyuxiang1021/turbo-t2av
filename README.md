@@ -6,6 +6,24 @@ Fast text-to-audio-video generation distilled from LTX-2 19B.
 
 </div>
 
+## TurboDiffusion-Style Acceleration Decomposition
+
+The figure below follows the same staged view as TurboDiffusion's latency
+breakdown, but removes the CPU-offload stage because the H20 used here has
+enough memory for the full model. The `+ rCM` row corresponds to the distilled
+4-step TurboT2AV student; the final row then adds SageSLA on top of that student.
+
+![TurboT2AV TD-style acceleration decomposition at 512x768](assets/turbot2av_td_style_no_cpuoffload_512x768.png)
+
+The measured stages are:
+
+| Resolution | Stage | Latency | Speedup vs previous | Speedup vs teacher | What changes |
+| --- | --- | ---: | ---: | ---: | --- |
+| `512x768` | LTX-2-19B-512x768<br>(40-step teacher) | 46.48s | - | 1.00x | Full teacher baseline. |
+| `512x768` | + W8A8 & FastNorm | 27.32s | 1.70x | 1.70x | TileLang W8A8 Linear and FastNorm with default dense attention. |
+| `512x768` | + 4-step student | 2.47s | 11.07x | 18.83x | Distilled TurboT2AV student, still using default dense attention. |
+| `512x768` | + SageSLA final | 1.19s | 2.07x | 39.04x | Student plus SageSLA `topk=0.3`, W8A8/FastNorm, text trimming, and helper fusions. |
+
 ## Overview
 
 TurboT2AV generates synchronized audio-video from text prompts in 4 steps.
@@ -158,6 +176,34 @@ export TURBO_CHECKPOINT_PATH=/path/to/ltx-2-19b-dev.safetensors
 export TURBO_GEMMA_PATH=/path/to/gemma-3-12b-it-qat-q4_0-unquantized
 ```
 
+### Student (4 steps, full acceleration)
+
+```bash
+cd LTX-2
+PYTHONPATH=/path/to/TurboDiffusion:/path/to/TurboDiffusion/turbodiffusion:packages/ltx-distillation/src:packages/ltx-core/src:packages/ltx-pipelines/src:$PYTHONPATH \
+  CUDA_VISIBLE_DEVICES=0 \
+  pixi run python -m ltx_distillation.tools.run_av_inference_eval \
+  --config_path packages/ltx-distillation/configs/bidirectional_rcm.yaml \
+  --prompts_file /path/to/prompts.csv \
+  --output_dir /path/to/student_accelerated_output \
+  --model_kind student \
+  --student_checkpoint /path/to/checkpoint.pt \
+  --student_param auto \
+  --num_prompts 8 \
+  --attention_type sagesla \
+  --attention_scope self \
+  --sla_topk 0.3 \
+  --fast_norm \
+  --quant_linear \
+  --quant_linear_scope all \
+  --quant_linear_backend tilelang_postscale
+```
+
+`--attention_scope self` replaces video/audio self-attention only. Masked text
+cross-attention stays on the native backend because SageAttention/SageSLA does
+not support the LTX text mask path here. For timing-only comparisons, add
+`--skip_decode --timing_json /path/to/timing.json`.
+
 ### Teacher (40 steps)
 
 ```bash
@@ -172,69 +218,6 @@ PYTHONPATH=packages/ltx-distillation/src:packages/ltx-core/src:packages/ltx-pipe
   --teacher_mode native_rf \
   --teacher_steps 40 \
   --num_prompts 8
-```
-
-### Student (4 steps)
-
-```bash
-cd LTX-2
-PYTHONPATH=packages/ltx-distillation/src:packages/ltx-core/src:packages/ltx-pipelines/src:$PYTHONPATH \
-  CUDA_VISIBLE_DEVICES=0 \
-  pixi run python -m ltx_distillation.tools.run_av_inference_eval \
-  --config_path packages/ltx-distillation/configs/bidirectional_rcm.yaml \
-  --prompts_file /path/to/prompts.csv \
-  --output_dir /path/to/student_output \
-  --model_kind student \
-  --student_checkpoint /path/to/checkpoint.pt \
-  --student_param auto \
-  --num_prompts 8
-```
-
-### Student (4 steps, SageAttention + FastNorm)
-
-```bash
-cd LTX-2
-PYTHONPATH=/path/to/TurboDiffusion:/path/to/TurboDiffusion/turbodiffusion:packages/ltx-distillation/src:packages/ltx-core/src:packages/ltx-pipelines/src:$PYTHONPATH \
-  CUDA_VISIBLE_DEVICES=0 \
-  pixi run python -m ltx_distillation.tools.run_av_inference_eval \
-  --config_path packages/ltx-distillation/configs/bidirectional_rcm.yaml \
-  --prompts_file /path/to/prompts.csv \
-  --output_dir /path/to/student_sageattn_fastnorm_output \
-  --model_kind student \
-  --student_checkpoint /path/to/checkpoint.pt \
-  --student_param auto \
-  --num_prompts 8 \
-  --attention_type sageattn \
-  --attention_scope self \
-  --fast_norm
-```
-
-`--attention_scope self` replaces video/audio self-attention only. Masked text
-cross-attention stays on the native backend because SageAttention does not
-support the LTX text mask path here. For timing-only comparisons, add
-`--skip_decode --timing_json /path/to/timing.json`.
-
-### Student (4 steps, SageSLA + FastNorm)
-
-```bash
-cd LTX-2
-PYTHONPATH=/path/to/TurboDiffusion:/path/to/TurboDiffusion/turbodiffusion:packages/ltx-distillation/src:packages/ltx-core/src:packages/ltx-pipelines/src:$PYTHONPATH \
-  CUDA_VISIBLE_DEVICES=0 \
-  pixi run python -m ltx_distillation.tools.run_av_inference_eval \
-  --config_path packages/ltx-distillation/configs/bidirectional_rcm.yaml \
-  --prompts_file /path/to/prompts.csv \
-  --output_dir /path/to/student_sagesla_fastnorm_output \
-  --model_kind student \
-  --student_checkpoint /path/to/checkpoint.pt \
-  --student_param auto \
-  --num_prompts 8 \
-  --attention_type sagesla \
-  --attention_scope self \
-  --sla_topk 0.3 \
-  --fast_norm \
-  --quant_linear \
-  --quant_linear_scope all \
-  --quant_linear_backend tilelang_postscale
 ```
 
 `--sla_topk 1.0` is the quality-first dense-block default for TurboT2AV.
@@ -306,32 +289,6 @@ and KV reads, so quantizing those projections is less likely to improve
 end-to-end runtime. TurboDiffusion W8A8 is not enabled by default. The compiled
 torchao backend is also not default because it adds a dependency and a
 first-sample compile cost.
-
-### TurboDiffusion-Style Acceleration Decomposition
-
-The figure below follows the same staged view as TurboDiffusion's latency
-breakdown, but removes the CPU-offload stage because the H20 used here has
-enough memory for the full model. The `+ rCM` row corresponds to the distilled
-4-step TurboT2AV student; the final row then adds SageSLA on top of that student.
-
-![TurboT2AV TD-style acceleration decomposition at 512x768](assets/turbot2av_td_style_no_cpuoffload_512x768.png)
-
-The measured stages are:
-
-| Resolution | Stage | Latency | Speedup vs previous | Speedup vs teacher | What changes |
-| --- | --- | ---: | ---: | ---: | --- |
-| `512x768` | LTX-2-19B-512x768<br>(40-step teacher) | 46.48s | - | 1.00x | Full teacher baseline. |
-| `512x768` | + W8A8 & FastNorm | 27.32s | 1.70x | 1.70x | TileLang W8A8 Linear and FastNorm with default dense attention. |
-| `512x768` | + 4-step student | 2.47s | 11.07x | 18.83x | Distilled TurboT2AV student, still using default dense attention. |
-| `512x768` | + SageSLA final | 1.19s | 2.07x | 39.04x | Student plus SageSLA `topk=0.3`, W8A8/FastNorm, text trimming, and helper fusions. |
-| `1024x1792` | LTX-2-19B-1024x1792<br>(40-step teacher) | 318.74s | - | 1.00x | High-resolution stress-test baseline. |
-| `1024x1792` | + W8A8 & FastNorm | 233.34s | 1.37x | 1.37x | TileLang W8A8 Linear and FastNorm with default dense attention. |
-| `1024x1792` | + 4-step student | 16.70s | 13.98x | 19.09x | Distilled TurboT2AV student, still using default dense attention. |
-| `1024x1792` | + SageSLA final | 5.82s | 2.87x | 54.79x | Student plus SageSLA `topk=0.3`, W8A8/FastNorm, text trimming, and helper fusions. |
-
-The high-resolution decomposition figure is also included:
-
-![TurboT2AV TD-style acceleration decomposition at 1024x1792](assets/turbot2av_td_style_no_cpuoffload_1024x1792.png)
 
 H20 generator-only measurements use `--skip_decode`, one common warmup sample,
 121 frames, and the same student checkpoint. The current recommended stack is
