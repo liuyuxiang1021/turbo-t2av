@@ -244,8 +244,8 @@ def main() -> None:
     draw_latency_figure(
         title_resolution="512x768",
         labels=labels,
-        latencies=[46.4757, 27.3201, 2.4679, 1.1904],
-        speedups=["1.70x", "11.07x", "2.07x"],
+        latencies=[46.4757, 27.3201, 2.3003, 1.1904],
+        speedups=["1.70x", "11.88x", "1.93x"],
         total_speedup="39x",
         output=ASSET_DIR / "turbot2av_td_style_no_cpuoffload_512x768.png",
     )

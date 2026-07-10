@@ -8,21 +8,16 @@ Fast text-to-audio-video generation distilled from LTX-2 19B.
 
 ## TurboDiffusion-Style Acceleration Decomposition
 
-The figure below follows the same staged view as TurboDiffusion's latency
-breakdown, but removes the CPU-offload stage because the H20 used here has
-enough memory for the full model. The `+ rCM` row corresponds to the distilled
-4-step TurboT2AV student; the final row then adds SageSLA on top of that student.
-
 ![TurboT2AV TD-style acceleration decomposition at 512x768](assets/turbot2av_td_style_no_cpuoffload_512x768.png)
 
-The measured stages are:
+Measured on a single NVIDIA H20 at `512x768`:
 
-| Resolution | Stage | Latency | Speedup vs previous | Speedup vs teacher | What changes |
-| --- | --- | ---: | ---: | ---: | --- |
-| `512x768` | LTX-2-19B-512x768<br>(40-step teacher) | 46.48s | - | 1.00x | Full teacher baseline. |
-| `512x768` | + W8A8 & FastNorm | 27.32s | 1.70x | 1.70x | TileLang W8A8 Linear and FastNorm with default dense attention. |
-| `512x768` | + 4-step student | 2.47s | 11.07x | 18.83x | Distilled TurboT2AV student on the W8A8/FastNorm stack, still using dense attention. |
-| `512x768` | + SageSLA final | 1.19s | 2.07x | 39.04x | Student plus SageSLA `topk=0.3`, W8A8/FastNorm, text trimming, and helper fusions. |
+| Stage | Latency | Speedup vs previous | Speedup vs teacher | What changes |
+| --- | ---: | ---: | ---: | --- |
+| LTX-2-19B-512x768<br>(40-step teacher) | 46.48s | - | 1.00x | Full teacher baseline. |
+| + W8A8 & FastNorm | 27.32s | 1.70x | 1.70x | TileLang W8A8 Linear and FastNorm with default dense attention. |
+| + 4-step student | 2.30s | 11.88x | 20.20x | Pure distilled TurboT2AV student with default dense attention and no FastNorm, SageSLA, or W8A8. |
+| + SageSLA final | 1.19s | 1.93x | 39.04x | Student plus SageSLA `topk=0.3`, W8A8/FastNorm, text trimming, and helper fusions. |
 
 ## Overview
 
@@ -30,10 +25,8 @@ TurboT2AV generates synchronized audio-video from text prompts in 4 steps.
 The demo compares the 40-step teacher with the 4-step student.
 This repository provides single-GPU inference for the distilled checkpoint.
 On an NVIDIA H20 at 512x768, generator-only latency is 46.48 seconds/video for
-the LTX-2 19B teacher, 2.47 seconds/video after switching to the 4-step
-TurboT2AV student on the W8A8/FastNorm stack, and 1.19 seconds/video after
-adding SageSLA and the remaining TurboDiffusion-style inference fusions.
-Training code and the full data-processing pipeline are coming soon.
+the LTX-2 19B teacher and 1.19 seconds/video for the accelerated TurboT2AV
+student.
 
 Main contributions:
 
@@ -44,9 +37,9 @@ Main contributions:
 - First extends this combined distillation strategy to a large-scale joint
   audio-video generation model at the 14B-video + 5B-audio scale.
 - Integrates a TurboDiffusion-style inference stack with SageSLA, FastNorm, and
-  TileLang W8A8 Linear. On a single NVIDIA H20, the final SageSLA path is 2.07x
-  faster than the W8A8/FastNorm 4-step student stage and 39.04x faster than the
-  40-step LTX-2 teacher baseline at 512x768.
+  TileLang W8A8 Linear. On a single NVIDIA H20, the final accelerated student is
+  1.93x faster than the pure 4-step student and 39.04x faster than the 40-step
+  LTX-2 teacher baseline at 512x768.
 
 <table>
   <thead>
