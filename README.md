@@ -307,6 +307,32 @@ end-to-end runtime. TurboDiffusion W8A8 is not enabled by default. The compiled
 torchao backend is also not default because it adds a dependency and a
 first-sample compile cost.
 
+### TurboDiffusion-Style Acceleration Decomposition
+
+The figure below follows the same staged view as TurboDiffusion's latency
+breakdown, but removes the CPU-offload stage because the H20 used here has
+enough memory for the full model. The `+ rCM` row corresponds to the distilled
+4-step TurboT2AV student; the final row then adds SageSLA on top of that student.
+
+![TurboT2AV TD-style acceleration decomposition at 512x768](assets/turbot2av_td_style_no_cpuoffload_512x768.png)
+
+The measured stages are:
+
+| Resolution | Stage | Latency | Speedup vs previous | Speedup vs teacher | What changes |
+| --- | --- | ---: | ---: | ---: | --- |
+| `512x768` | LTX-2 teacher 40-step | 46.48s | - | 1.00x | Full teacher baseline. |
+| `512x768` | + W8A8 & FastNorm | 27.32s | 1.70x | 1.70x | TileLang W8A8 Linear and FastNorm with default dense attention. |
+| `512x768` | + 4-step student | 2.47s | 11.07x | 18.83x | Distilled TurboT2AV student, still using default dense attention. |
+| `512x768` | + SageSLA final | 1.19s | 2.07x | 39.04x | Student plus SageSLA `topk=0.3`, W8A8/FastNorm, text trimming, and helper fusions. |
+| `1024x1792` | LTX-2 teacher 40-step | 318.74s | - | 1.00x | High-resolution stress-test baseline. |
+| `1024x1792` | + W8A8 & FastNorm | 233.34s | 1.37x | 1.37x | TileLang W8A8 Linear and FastNorm with default dense attention. |
+| `1024x1792` | + 4-step student | 16.70s | 13.98x | 19.09x | Distilled TurboT2AV student, still using default dense attention. |
+| `1024x1792` | + SageSLA final | 5.82s | 2.87x | 54.79x | Student plus SageSLA `topk=0.3`, W8A8/FastNorm, text trimming, and helper fusions. |
+
+The high-resolution decomposition figure is also included:
+
+![TurboT2AV TD-style acceleration decomposition at 1024x1792](assets/turbot2av_td_style_no_cpuoffload_1024x1792.png)
+
 H20 generator-only measurements use `--skip_decode`, one common warmup sample,
 121 frames, and the same student checkpoint. The current recommended stack is
 SageSLA self-attention with `topk=0.3`, FastNorm, text-context trimming, fused
