@@ -12,23 +12,27 @@ Fast text-to-audio-video generation distilled from LTX-2 19B.
 
 Measured on a single NVIDIA H20 at `1024x1792`:
 
-| Stage | Latency | Speedup vs previous | Speedup vs pure student | What changes |
+| Stage | Latency | Speedup vs previous | Speedup vs teacher | What changes |
 | --- | ---: | ---: | ---: | --- |
-| Pure 4-step student | 16.1096s | - | 1.00x | Distilled TurboT2AV student with dense attention. |
-| + W8A8 & FastNorm | 11.7628s | 1.37x | 1.37x | TileLang W8A8 Linear and FastNorm with dense attention. |
-| + SageSLA final | 5.8689s | 2.00x | 2.75x | SageSLA `topk=0.3` self-attention plus W8A8/FastNorm. |
+| LTX-2-19B teacher (40 steps) | 318.7405s | - | 1.00x | Full teacher baseline with dense attention. |
+| + W8A8 & FastNorm | 233.3424s | 1.37x | 1.37x | Add TileLang W8A8 Linear and FastNorm to the teacher. |
+| + rCM (4-step student) | 11.7628s | 19.84x | 27.10x | Switch to the distilled student while retaining W8A8/FastNorm. |
+| + SageSLA final | 5.8689s | 2.00x | 54.31x | Add SageSLA `topk=0.3` self-attention to the accelerated student. |
 
 At this resolution the video latent is `[1,16,128,32,56]`, corresponding to
-28,672 video self-attention tokens. The SageSLA stage is measured against the
-same W8A8/FastNorm student with dense attention.
+28,672 video self-attention tokens. The stages are cumulative: rCM keeps the
+W8A8/FastNorm stack, and the final stage adds SageSLA. For reference, the pure
+4-step student without these inference optimizations takes 16.1096s/video, so
+the final path is also 2.75x faster than the pure student.
 
 ## Overview
 
 TurboT2AV generates synchronized audio-video from text prompts in 4 steps.
 The demo compares the 40-step teacher with the 4-step student.
 This repository provides single-GPU inference for the distilled checkpoint.
-On an NVIDIA H20 at 1024x1792, generator-only latency is 16.11 seconds/video
-for the pure 4-step student and 5.87 seconds/video for the accelerated student.
+On an NVIDIA H20 at 1024x1792, generator-only latency falls from 318.74
+seconds/video for the 40-step teacher to 5.87 seconds/video for the accelerated
+4-step student.
 
 Main contributions:
 
@@ -40,8 +44,9 @@ Main contributions:
   audio-video generation model at the 14B-video + 5B-audio scale.
 - Integrates a TurboDiffusion-style inference stack with SageSLA, FastNorm, and
   TileLang W8A8 Linear. On a single NVIDIA H20 at 1024x1792, the final
-  accelerated student is 2.75x faster than the pure 4-step student and the
-  SageSLA stage is 2.00x faster than the W8A8/FastNorm dense-attention stage.
+  accelerated student is 54.31x faster than the 40-step teacher and 2.75x
+  faster than the pure 4-step student. SageSLA contributes a further 2.00x over
+  the W8A8/FastNorm student stage.
 
 <table>
   <thead>
@@ -288,16 +293,22 @@ end-to-end runtime. TurboDiffusion W8A8 is not enabled by default. The compiled
 torchao backend is also not default because it adds a dependency and a
 first-sample compile cost.
 
-H20 generator-only measurements use `--skip_decode`, one common warmup sample,
-121 frames, and the same student checkpoint. The current recommended stack is
-SageSLA self-attention with `topk=0.3`, FastNorm, text-context trimming, fused
-Ada/RoPE helpers, and TileLang post-scale W8A8 Linear.
+H20 generator-only measurements use `--skip_decode` and 121 frames. The costly
+teacher rows use one measured generation; the student rows report medians from
+repeated generations. The stages are cumulative, and the current recommended
+stack is SageSLA self-attention with `topk=0.3`, FastNorm, text-context
+trimming, fused Ada/RoPE helpers, and TileLang post-scale W8A8 Linear.
 
-| Resolution | Path | Median generator time | Speedup vs previous student stage | Notes |
-| --- | --- | ---: | ---: | --- |
-| `1024x1792` | Pure 4-step student | 16.1096s/video | 1.00x | Dense-attention student baseline. |
-| `1024x1792` | 4-step student + W8A8/FastNorm | 11.7628s/video | 1.37x | TileLang W8A8 Linear and FastNorm with dense attention. |
-| `1024x1792` | SageSLA `topk=0.3` + FastNorm + TileLang W8A8 | 5.8689s/video | 2.00x | 96 self-attention modules and 1370 Linear modules replaced. |
+| Stage | Generator time | Speedup vs previous | Speedup vs teacher | Notes |
+| --- | ---: | ---: | ---: | --- |
+| LTX-2-19B teacher (40 steps) | 318.7405s/video | - | 1.00x | Dense teacher baseline. |
+| + W8A8/FastNorm | 233.3424s/video | 1.37x | 1.37x | TileLang W8A8 Linear and FastNorm on the teacher. |
+| + rCM (4-step student) | 11.7628s/video | 19.84x | 27.10x | Distilled student retaining W8A8/FastNorm and dense attention. |
+| + SageSLA `topk=0.3` | 5.8689s/video | 2.00x | 54.31x | 96 self-attention modules and 1370 Linear modules replaced. |
+
+The non-cumulative pure 4-step student baseline is 16.1096s/video. It is kept
+out of the staged table because the TD-style `+ rCM` row retains the preceding
+W8A8/FastNorm optimizations.
 
 SageSLA affects quality because it sparsifies self-attention. Earlier decoded
 visual checks showed `topk=0.3` is a useful high-resolution speed/quality

@@ -251,16 +251,17 @@ def draw_latency_figure(
 
 def main() -> None:
     labels = [
-        "TurboT2AV-1024x1792\n(pure 4-step student)",
+        "LTX-2-19B-1024x1792\n(40-step teacher)",
         "+ W8A8 & FusedNorm",
+        "+ rCM\n(4-step student)",
         "+ SageSLA\n(final version)",
     ]
     draw_latency_figure(
         title_resolution="1024x1792",
         labels=labels,
-        latencies=[16.1096, 11.7628, 5.8689],
-        speedups=["1.37x", "2.00x"],
-        total_speedup="2.75x",
+        latencies=[318.7405, 233.3424, 11.7628, 5.8689],
+        speedups=["1.37x", "19.84x", "2.00x"],
+        total_speedup="54.31x",
         output=ASSET_DIR / "turbot2av_td_style_1024x1792.png",
     )
 
