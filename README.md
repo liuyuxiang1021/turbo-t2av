@@ -29,10 +29,10 @@ The measured stages are:
 TurboT2AV generates synchronized audio-video from text prompts in 4 steps.
 The demo compares the 40-step teacher with the 4-step student.
 This repository provides single-GPU inference for the distilled checkpoint.
-On an NVIDIA H20, previous benchmark logs report about 55 seconds/video
-generator time for the 40-step teacher, about 2.53 seconds/video for the
-default 4-step student, and about 2.17 seconds/video with optional
-SageAttention + FastNorm inference acceleration.
+On an NVIDIA H20 at 512x768, generator-only latency is 46.48 seconds/video for
+the LTX-2 19B teacher, 2.47 seconds/video for the default 4-step TurboT2AV
+student, and 1.19 seconds/video with the TurboDiffusion-style accelerated
+student path.
 Training code and the full data-processing pipeline are coming soon.
 
 Main contributions:
@@ -43,6 +43,10 @@ Main contributions:
   complements DMD as a reverse-KL on-policy method.
 - First extends this combined distillation strategy to a large-scale joint
   audio-video generation model at the 14B-video + 5B-audio scale.
+- Integrates a TurboDiffusion-style inference stack with SageSLA, FastNorm, and
+  TileLang W8A8 Linear. On a single NVIDIA H20, the accelerated student path is
+  2.07x faster than the default 4-step student and 39.04x faster than the
+  40-step LTX-2 teacher at 512x768.
 
 <table>
   <thead>
