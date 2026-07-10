@@ -152,7 +152,10 @@ def draw_latency_figure(
     x0 = 500
     max_width = 1410
     max_latency = max(latencies)
-    y_centers = [105, 220, 335, 450]
+    if len(latencies) == 3:
+        y_centers = [120, 270, 420]
+    else:
+        y_centers = [105, 220, 335, 450]
     bar_h = 68
 
     def x_for(value: float) -> float:
@@ -203,22 +206,34 @@ def draw_latency_figure(
     draw_curve_arrow(draw, [p(x, y) for x, y in top_curve], teal, width=s(5), head=s(18))
     draw_text(draw, p(top_end[0] + 112, top_end[1] + 34), speedups[0], ratio_font, teal)
 
-    middle_start = (x_for(latencies[1]) + 118, y_centers[1] + 64)
-    middle_end = (x_for(latencies[2]) + 136, y_centers[2] + 2)
-    middle_curve = bezier(
-        middle_start,
-        (middle_start[0] - 320, middle_start[1] + 100),
-        (middle_end[0] + 500, middle_end[1] + 62),
-        middle_end,
-    )
-    draw_curve_arrow(draw, [p(x, y) for x, y in middle_curve], teal, width=s(5), head=s(18))
-    draw_text(draw, p((middle_start[0] + middle_end[0]) / 2 - 30, y_centers[2] - 44), speedups[1], ratio_font, teal)
+    if len(latencies) == 3:
+        small_start = (x_for(latencies[1]) + 96, y_centers[1] + 74)
+        small_end = (x_for(latencies[2]) + 142, y_centers[2] + 16)
+        small_curve = bezier(
+            small_start,
+            (small_start[0] - 180, small_start[1] + 82),
+            (small_end[0] + 260, small_end[1] + 36),
+            small_end,
+        )
+        draw_curve_arrow(draw, [p(x, y) for x, y in small_curve], teal, width=s(5), head=s(18))
+        draw_text(draw, p((small_start[0] + small_end[0]) / 2 + 92, y_centers[2] - 46), speedups[1], ratio_font, teal)
+    else:
+        middle_start = (x_for(latencies[1]) + 118, y_centers[1] + 64)
+        middle_end = (x_for(latencies[2]) + 136, y_centers[2] + 2)
+        middle_curve = bezier(
+            middle_start,
+            (middle_start[0] - 320, middle_start[1] + 100),
+            (middle_end[0] + 500, middle_end[1] + 62),
+            middle_end,
+        )
+        draw_curve_arrow(draw, [p(x, y) for x, y in middle_curve], teal, width=s(5), head=s(18))
+        draw_text(draw, p((middle_start[0] + middle_end[0]) / 2 - 30, y_centers[2] - 44), speedups[1], ratio_font, teal)
 
-    small_start = (x_for(latencies[2]) + 136, y_centers[2] + 32)
-    small_end = (x_for(latencies[3]) + 136, y_centers[3] + 8)
-    small_curve = bezier(small_start, (small_start[0] + 36, small_start[1] + 58), (small_end[0] + 54, small_end[1] - 34), small_end)
-    draw_curve_arrow(draw, [p(x, y) for x, y in small_curve], teal, width=s(5), head=s(17))
-    draw_text(draw, p(small_end[0] + 46, y_centers[3] - 26), speedups[2], ratio_font, teal)
+        small_start = (x_for(latencies[2]) + 136, y_centers[2] + 32)
+        small_end = (x_for(latencies[3]) + 136, y_centers[3] + 8)
+        small_curve = bezier(small_start, (small_start[0] + 36, small_start[1] + 58), (small_end[0] + 54, small_end[1] - 34), small_end)
+        draw_curve_arrow(draw, [p(x, y) for x, y in small_curve], teal, width=s(5), head=s(17))
+        draw_text(draw, p(small_end[0] + 46, y_centers[3] - 26), speedups[2], ratio_font, teal)
 
     # Overall teacher-to-final arrow.
     bottom_y = 605
@@ -236,18 +251,17 @@ def draw_latency_figure(
 
 def main() -> None:
     labels = [
-        "LTX-2-19B-512x768\n(40-step teacher)",
+        "TurboT2AV-1024x1792\n(pure 4-step student)",
         "+ W8A8 & FusedNorm",
-        "+ rCM\n(4-step student)",
         "+ SageSLA\n(final version)",
     ]
     draw_latency_figure(
-        title_resolution="512x768",
+        title_resolution="1024x1792",
         labels=labels,
-        latencies=[46.5561, 27.3688, 1.3380, 1.1898],
-        speedups=["1.70x", "20.46x", "1.12x"],
-        total_speedup="39x",
-        output=ASSET_DIR / "turbot2av_td_style_no_cpuoffload_512x768.png",
+        latencies=[16.1096, 11.7628, 5.5242],
+        speedups=["1.37x", "2.13x"],
+        total_speedup="2.92x",
+        output=ASSET_DIR / "turbot2av_td_style_1024x1792.png",
     )
 
 if __name__ == "__main__":

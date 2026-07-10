@@ -8,6 +8,8 @@ Fast text-to-audio-video generation distilled from LTX-2 19B.
 
 ## TurboDiffusion-Style Acceleration
 
+![TurboT2AV TD-style acceleration decomposition at 1024x1792](assets/turbot2av_td_style_1024x1792.png)
+
 Measured on a single NVIDIA H20 at `1024x1792`:
 
 | Stage | Latency | Speedup vs previous | Speedup vs pure student | What changes |
