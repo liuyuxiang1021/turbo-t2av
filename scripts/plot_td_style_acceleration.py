@@ -220,8 +220,6 @@ def draw_latency_figure(
     tw, _ = text_size(draw, axis_label, axis_font)
     draw_text(draw, p((width - tw / scale) / 2 + 130, 675), axis_label, axis_font, black)
 
-    draw_text(draw, p(28, y_centers[0] + 32), title_resolution, small_font, black)
-
     img = img.resize((width, height), Image.Resampling.LANCZOS)
     output.parent.mkdir(parents=True, exist_ok=True)
     img.save(output)
@@ -229,7 +227,7 @@ def draw_latency_figure(
 
 def main() -> None:
     labels = [
-        "LTX-2 teacher",
+        "LTX-2-teacher-512x768",
         "+ W8A8 & FusedNorm",
         "+ rCM\n(4-step student)",
         "+ SageSLA\n(final version)",
@@ -242,9 +240,15 @@ def main() -> None:
         total_speedup="39x",
         output=ASSET_DIR / "turbot2av_td_style_no_cpuoffload_512x768.png",
     )
+    labels_high_res = [
+        "LTX-2-teacher-1024x1792",
+        "+ W8A8 & FusedNorm",
+        "+ rCM\n(4-step student)",
+        "+ SageSLA\n(final version)",
+    ]
     draw_latency_figure(
         title_resolution="1024x1792",
-        labels=labels,
+        labels=labels_high_res,
         latencies=[318.7405, 233.3424, 16.6961, 5.8173],
         speedups=["1.37x", "13.98x", "2.87x"],
         total_speedup="55x",
