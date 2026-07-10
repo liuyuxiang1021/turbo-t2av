@@ -6,31 +6,27 @@ Fast text-to-audio-video generation distilled from LTX-2 19B.
 
 </div>
 
-## TurboDiffusion-Style Acceleration Decomposition
+## TurboDiffusion-Style Acceleration
 
-![TurboT2AV TD-style acceleration decomposition at 512x768](assets/turbot2av_td_style_no_cpuoffload_512x768.png)
+Measured on a single NVIDIA H20 at `1024x1792`:
 
-Measured on a single NVIDIA H20 at `512x768`:
-
-| Stage | Latency | Speedup vs previous | Speedup vs teacher | What changes |
+| Stage | Latency | Speedup vs previous | Speedup vs pure student | What changes |
 | --- | ---: | ---: | ---: | --- |
-| LTX-2-19B-512x768<br>(40-step teacher) | 46.56s | - | 1.00x | Full teacher baseline. |
-| + W8A8 & FastNorm | 27.37s | 1.70x | 1.70x | TileLang W8A8 Linear and FastNorm with default dense attention. |
-| + 4-step student | 1.34s | 20.46x | 34.80x | Switch to the rCM-distilled 4-step student while keeping W8A8/FastNorm enabled. |
-| + SageSLA final | 1.19s | 1.12x | 39.13x | Student plus SageSLA `topk=0.3`, W8A8/FastNorm, text trimming, and helper fusions. |
+| Pure 4-step student | 16.1096s | - | 1.00x | Distilled TurboT2AV student with dense attention. |
+| + W8A8 & FastNorm | 11.7628s | 1.37x | 1.37x | TileLang W8A8 Linear and FastNorm with dense attention. |
+| + SageSLA final | 5.5242s | 2.13x | 2.92x | SageSLA `topk=0.2` self-attention plus W8A8/FastNorm. |
 
-For the pure 4-step student with all TurboDiffusion acceleration disabled, the
-generator-only latency is 2.32s/video. The final accelerated student is 1.95x
-faster than this pure student baseline.
+At this resolution the video latent is `[1,16,128,32,56]`, corresponding to
+28,672 video self-attention tokens. The SageSLA stage is measured against the
+same W8A8/FastNorm student with dense attention.
 
 ## Overview
 
 TurboT2AV generates synchronized audio-video from text prompts in 4 steps.
 The demo compares the 40-step teacher with the 4-step student.
 This repository provides single-GPU inference for the distilled checkpoint.
-On an NVIDIA H20 at 512x768, generator-only latency is 46.56 seconds/video for
-the LTX-2 19B teacher and 1.19 seconds/video for the accelerated TurboT2AV
-student.
+On an NVIDIA H20 at 1024x1792, generator-only latency is 16.11 seconds/video
+for the pure 4-step student and 5.52 seconds/video for the accelerated student.
 
 Main contributions:
 
@@ -41,9 +37,9 @@ Main contributions:
 - First extends this combined distillation strategy to a large-scale joint
   audio-video generation model at the 14B-video + 5B-audio scale.
 - Integrates a TurboDiffusion-style inference stack with SageSLA, FastNorm, and
-  TileLang W8A8 Linear. On a single NVIDIA H20, the final accelerated student is
-  1.95x faster than the pure 4-step student and 39.13x faster than the 40-step
-  LTX-2 teacher baseline at 512x768.
+  TileLang W8A8 Linear. On a single NVIDIA H20 at 1024x1792, the final
+  accelerated student is 2.92x faster than the pure 4-step student and the
+  SageSLA stage is 2.13x faster than the W8A8/FastNorm dense-attention stage.
 
 <table>
   <thead>
@@ -193,7 +189,7 @@ PYTHONPATH=/path/to/TurboDiffusion:/path/to/TurboDiffusion/turbodiffusion:packag
   --num_prompts 8 \
   --attention_type sagesla \
   --attention_scope self \
-  --sla_topk 0.3 \
+  --sla_topk 0.2 \
   --fast_norm \
   --quant_linear \
   --quant_linear_scope all \
@@ -222,24 +218,23 @@ PYTHONPATH=packages/ltx-distillation/src:packages/ltx-core/src:packages/ltx-pipe
 ```
 
 `--sla_topk 1.0` is the quality-first dense-block default for TurboT2AV.
-Lower values such as `0.8`, `0.6`, `0.4`, or `0.3` are faster on long video
+Lower values such as `0.8`, `0.6`, `0.4`, or `0.2` are faster on long video
 sequences, but they change generated content more visibly because SLA is a
 sparse-linear attention approximation, not a numerically equivalent
 dense-attention kernel. The current speed/quality tradeoff used for the H20
-figures is `--sla_topk 0.3`.
+figures is `--sla_topk 0.2`.
 
 For finer control, `--sla_topk_schedule` can set different top-k ratios by
 transformer layer. Unmatched layers fall back to `--sla_topk`:
 
 ```bash
---sla_topk 0.3 --sla_topk_schedule 0-15:0.35,16-31:0.3,32-47:0.25
+--sla_topk 0.2 --sla_topk_schedule 0-15:0.25,16-31:0.2,32-47:0.2
 ```
 
 This is useful when early layers need denser attention for quality while later
-layers can use a more aggressive sparse pattern for speed. In 512x768 H20
-tests, layer schedules only improved generator time by about 1% over uniform
-`topk=0.3`, so uniform `topk=0.3` remains the recommended default unless a
-target workload validates a better schedule.
+layers can use a more aggressive sparse pattern for speed. Uniform `topk=0.2`
+is the reported H20 setting unless a target workload validates a better
+schedule.
 
 ### Experimental W8A8 Linear Quantization
 
@@ -293,34 +288,27 @@ first-sample compile cost.
 
 H20 generator-only measurements use `--skip_decode`, one common warmup sample,
 121 frames, and the same student checkpoint. The current recommended stack is
-SageSLA self-attention with `topk=0.3`, FastNorm, text-context trimming, fused
+SageSLA self-attention with `topk=0.2`, FastNorm, text-context trimming, fused
 Ada/RoPE helpers, and TileLang post-scale W8A8 Linear.
 
 | Resolution | Path | Median generator time | Speedup vs previous student stage | Notes |
 | --- | --- | ---: | ---: | --- |
-| `512x768` | 4-step student + W8A8/FastNorm | 2.468s/video | 1.00x | Distilled student stage in the TD-style decomposition. |
-| `512x768` | SageSLA `topk=0.3` + FastNorm + TileLang W8A8 | 1.19s/video | 2.07x | 96 self-attention modules and 1370 Linear modules replaced. |
-| `1024x1792` | 4-step student + W8A8/FastNorm | 16.70s/video | 1.00x | Stress-test resolution; video latent is `[1,16,128,32,56]`. |
-| `1024x1792` | SageSLA `topk=0.3` + FastNorm + TileLang W8A8 | 5.82s/video | 2.87x | Quality/speed tradeoff used for visual checks. |
-| `1024x1792` | SageSLA `topk=0.2` + FastNorm + TileLang W8A8 | 5.50s/video | 3.04x | Faster, with more sparse attention approximation. |
+| `1024x1792` | Pure 4-step student | 16.1096s/video | 1.00x | Dense-attention student baseline. |
+| `1024x1792` | 4-step student + W8A8/FastNorm | 11.7628s/video | 1.37x | TileLang W8A8 Linear and FastNorm with dense attention. |
+| `1024x1792` | SageSLA `topk=0.2` + FastNorm + TileLang W8A8 | 5.5242s/video | 2.13x | 96 self-attention modules and 1370 Linear modules replaced. |
 
 SageSLA affects quality because it sparsifies self-attention. Earlier decoded
-visual checks showed `topk=0.3` is the safer high-resolution tradeoff, while
-`topk=0.2` is useful when speed is prioritized. Lower top-k values should be
-rechecked visually for the target prompt distribution.
+visual checks showed `topk=0.2` is a useful high-resolution speed/quality
+tradeoff. Lower top-k values should be rechecked visually for the target prompt
+distribution.
 
 Component-level H20 validation:
 
 | Component | Shape / setting | Dense or BF16 baseline | Accelerated path | Speedup |
 | --- | --- | ---: | ---: | ---: |
-| Self-attention | `512x768`, 6144 video tokens | SDPA 1.798ms | SageSLA `topk=0.3` 0.983ms | 1.83x |
-| Self-attention | `512x768`, 6144 video tokens | SDPA 1.798ms | SageSLA `topk=0.2` 0.915ms | 1.97x |
-| Self-attention | `1024x1792`, 28672 video tokens | SDPA 37.70ms | SageSLA `topk=0.3` 7.818ms | 4.82x |
 | Self-attention | `1024x1792`, 28672 video tokens | SDPA 37.70ms | SageSLA `topk=0.2` 6.229ms | 6.05x |
 | TileLang W8A8 GEMM | `M=28672,N=16384,K=4096` | BF16 5.281ms | W8A8 + A8 quant 3.375ms | 1.56x |
 | TileLang W8A8 GEMM | `M=28672,N=4096,K=16384` | BF16 5.456ms | W8A8 + A8 quant 3.397ms | 1.61x |
-| TileLang W8A8 GEMM | `M=6144,N=16384,K=4096` | BF16 1.096ms | W8A8 + A8 quant 0.774ms | 1.42x |
-| TileLang W8A8 GEMM | `M=6144,N=4096,K=16384` | BF16 1.012ms | W8A8 + A8 quant 0.650ms | 1.56x |
 
 The strict TurboDiffusion `Int8Linear` backend precompresses weights correctly,
 but was slower than BF16 cuBLASLt on this H20 setup for TurboT2AV FFN shapes.
