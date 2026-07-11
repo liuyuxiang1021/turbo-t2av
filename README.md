@@ -98,22 +98,6 @@ This single task installs the local LTX packages, CUDA 12.8 PyTorch,
 SageAttention, SpargeAttn, and TileLang. It provides everything required by the
 recommended SageSLA + FastNorm + TileLang W8A8 inference path.
 
-SageAttention and SpargeAttn are built from their upstream source repositories.
-Local source trees can be selected without changing the task:
-
-```bash
-SAGEATTENTION_PACKAGE=/path/to/SageAttention \
-SPARGEATTN_PACKAGE=/path/to/SpargeAttn \
-pixi run install-acceleration
-```
-
-The documented checkout path already exposes the parent TurboDiffusion package.
-Only standalone TurboT2AV checkouts need to add it to `PYTHONPATH`:
-
-```bash
-export PYTHONPATH=/path/to/TurboDiffusion:/path/to/TurboDiffusion/turbodiffusion:$PYTHONPATH
-```
-
 ## 2. Download Weights
 
 | Model Name | Checkpoint Link |
