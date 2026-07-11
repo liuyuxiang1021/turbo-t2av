@@ -73,6 +73,7 @@ install-sageattention = { depends-on = ["install-pytorch"], cmd = "bash -lc 'pip
 install-spargeattn = { depends-on = ["install-pytorch"], cmd = "bash -lc 'pip install --no-build-isolation \"${SPARGEATTN_PACKAGE:-git+https://github.com/thu-ml/SpargeAttn.git}\"'" }
 install-tilelang = { depends-on = ["install-pytorch"], cmd = "pip install tilelang==0.1.11" }
 install-torchao = { depends-on = ["install-pytorch"], cmd = "pip install torchao==0.17.0" }
+install-acceleration = { depends-on = ["install-local"], cmd = "bash -lc 'pip install --no-build-isolation \"${SAGEATTENTION_PACKAGE:-git+https://github.com/thu-ml/SageAttention.git}\" && pip install --no-build-isolation \"${SPARGEATTN_PACKAGE:-git+https://github.com/thu-ml/SpargeAttn.git}\" && pip install tilelang==0.1.11'" }
 
 [tool.pixi.pypi-dependencies]
 lmdb = ">=2.2.1,<3"

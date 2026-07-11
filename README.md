@@ -45,8 +45,7 @@ Main contributions:
 - Integrates a TurboDiffusion-style inference stack with SageSLA, FastNorm, and
   TileLang W8A8 Linear. On a single NVIDIA H20 at 1024x1792, the final
   accelerated student is 54.31x faster than the 40-step teacher and 2.75x
-  faster than the pure 4-step student. SageSLA contributes a further 2.00x over
-  the W8A8/FastNorm student stage.
+  faster than the pure 4-step student.
 
 <table>
   <thead>
@@ -92,56 +91,28 @@ Main contributions:
 ```bash
 cd TurboDiffusion/TurboT2AV/LTX-2
 pixi install
-pixi run install-local
+pixi run install-acceleration
 ```
 
-Optional inference acceleration uses SageAttention/SageSLA plus
-TurboDiffusion's fused norm kernels. The fastest measured path additionally
-uses TileLang W8A8 Linear replacement for transformer GEMMs.
+This single task installs the local LTX packages, CUDA 12.8 PyTorch,
+SageAttention, SpargeAttn, and TileLang. It provides everything required by the
+recommended SageSLA + FastNorm + TileLang W8A8 inference path.
+
+SageAttention and SpargeAttn are built from their upstream source repositories.
+Local source trees can be selected without changing the task:
 
 ```bash
-pixi run install-sageattention
+SAGEATTENTION_PACKAGE=/path/to/SageAttention \
+SPARGEATTN_PACKAGE=/path/to/SpargeAttn \
+pixi run install-acceleration
 ```
 
-This installs SageAttention from the upstream source tree because PyPI only
-publishes the older 1.0.x series. The task uses `--no-build-isolation` because
-SageAttention imports the already-installed PyTorch package during setup. To
-use a local checkout, set `SAGEATTENTION_PACKAGE=/path/to/SageAttention`
-before running the task.
-
-For SageSLA, also install SpargeAttn:
-
-```bash
-pixi run install-spargeattn
-```
-
-To use a local checkout, set `SPARGEATTN_PACKAGE=/path/to/SpargeAttn` before
-running the task.
-
-Recommended TileLang W8A8 Linear acceleration uses TileLang:
-
-```bash
-pixi run install-tilelang
-```
-
-Experimental compiled W8A8 Linear acceleration can also use torchao:
-
-```bash
-pixi run install-torchao
-```
-
-FastNorm and SLA are loaded from the parent TurboDiffusion checkout. If
-TurboT2AV is not checked out inside TurboDiffusion, add TurboDiffusion to
-`PYTHONPATH` before running accelerated inference:
+The documented checkout path already exposes the parent TurboDiffusion package.
+Only standalone TurboT2AV checkouts need to add it to `PYTHONPATH`:
 
 ```bash
 export PYTHONPATH=/path/to/TurboDiffusion:/path/to/TurboDiffusion/turbodiffusion:$PYTHONPATH
 ```
-
-`--attention_type sagesla` additionally requires TurboDiffusion's SLA module
-and the SpargeAttn/SageSLA extension to be installed in the active Python
-environment. Without an SLA adapter checkpoint, TurboDiffusion's `proj_l`
-compensation layer is zero-initialized, matching the plug-in inference path.
 
 ## 2. Download Weights
 
