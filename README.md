@@ -25,6 +25,9 @@ W8A8/FastNorm stack, and the final stage adds SageSLA. For reference, the pure
 4-step student without these inference optimizations takes 16.1096s/video, so
 the final path is also 2.75x faster than the pure student.
 
+See [TurboDiffusion Integration Notes](docs/acceleration.md) for the reused
+components, LTX-2-specific adaptations, and interpretation of these results.
+
 ## Overview
 
 TurboT2AV generates synchronized audio-video from text prompts in 4 steps.
@@ -175,13 +178,3 @@ CUDA_VISIBLE_DEVICES=0 pixi run python -m ltx_distillation.tools.run_av_inferenc
   --video_height 1024 \
   --video_width 1792
 ```
-
-The reported H20 tradeoff uses `--sla_topk 0.3`; use `1.0` when preserving dense
-blocks is more important than speed. `--attention_scope self` accelerates
-video/audio self-attention while masked text cross-attention stays on the native
-backend. For generator-only timing, add
-`--skip_decode --timing_json /path/to/timing.json`.
-
-Each sample is written directly under `--output_dir` as matching `.mp4`, `.wav`,
-and `.json` files. See [Acceleration Reference](docs/acceleration.md) for SLA
-schedules, W8A8 backends, prequantized checkpoints, and H20 microbenchmarks.
