@@ -19,9 +19,8 @@ the TurboT2AV distillation and training pipeline remains independent.
 
 The recommended path combines SageSLA `topk=0.3`, FastNorm, and TileLang W8A8.
 The one-command installer pins the tested SageAttention and SpargeAttn commits
-and applies an H20/Pixi build-only compatibility patch to SpargeAttn. The patch
-selects sources for the target CUDA architecture and does not change its
-attention kernels.
+and applies build-only compatibility patches. They keep architecture-specific
+CUDA sources scoped to their valid targets and do not change attention kernels.
 
 ## Differences From TurboDiffusion
 

@@ -44,6 +44,7 @@ install_sageattention() {
     if [[ -z "${package}" ]]; then
         package="${BUILD_ROOT}/SageAttention"
         clone_commit "https://github.com/thu-ml/SageAttention.git" "${SAGEATTENTION_COMMIT}" "${package}"
+        git -C "${package}" apply --unidiff-zero "${PROJECT_DIR}/patches/sageattention-sm90-build.patch"
     fi
 
     local include_flags
