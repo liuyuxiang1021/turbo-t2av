@@ -6,7 +6,8 @@ Just pure text -> context embedding conversion.
 """
 
 import os
-from typing import List, Dict, Any, Optional
+from typing import Dict, List
+
 import torch
 import torch.nn as nn
 
@@ -57,8 +58,6 @@ class GemmaTextEncoderWrapper(nn.Module):
                 - audio_context: [B, seq_len, dim] audio conditioning
                 - attention_mask: [B, seq_len] attention mask
         """
-        batch_size = len(text_prompts)
-
         # Encode each prompt
         video_contexts = []
         audio_contexts = []
@@ -77,7 +76,7 @@ class GemmaTextEncoderWrapper(nn.Module):
         audio_context = torch.cat(audio_contexts, dim=0)
         attention_mask = torch.cat(attention_masks, dim=0)
         if (
-            os.environ.get("TURBOT2AV_TRIM_TEXT_CONTEXT", "1").lower() not in {"0", "false", "no"}
+            os.environ.get("TURBOT2AV_TRIM_TEXT_CONTEXT", "0").lower() not in {"0", "false", "no"}
             and attention_mask.shape[0] == 1
         ):
             valid_tokens = attention_mask[0].bool()

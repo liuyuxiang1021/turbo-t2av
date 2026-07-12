@@ -30,7 +30,9 @@ class LTXModelType(Enum):
 
 
 def output_modulate(x: torch.Tensor, scale_shift_table: torch.Tensor, embedded_timestep: torch.Tensor) -> torch.Tensor:
-    scale_shift_values = scale_shift_table[None, None].to(device=x.device, dtype=x.dtype) + embedded_timestep[:, :, None]
+    scale_shift_values = (
+        scale_shift_table[None, None].to(device=x.device, dtype=x.dtype) + embedded_timestep[:, :, None]
+    )
     shift, scale = scale_shift_values[:, :, 0], scale_shift_values[:, :, 1]
     return x * (1 + scale) + shift
 

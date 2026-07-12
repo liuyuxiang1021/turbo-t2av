@@ -7,7 +7,6 @@ import math
 import os
 import re
 import sys
-import warnings
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -27,10 +26,15 @@ QUANT_LINEAR_SCOPES = (
     "video_heavy",
     "non_attention",
 )
-QUANT_LINEAR_BACKENDS = ("turbodiffusion", "torchao_compile", "tilelang_postscale")
+QUANT_LINEAR_BACKENDS = ("turbodiffusion", "tilelang_postscale")
 DEFAULT_SLA_TOPK = 1.0
 _TD_W8A8_QUANT_WORKSPACES: dict[tuple[str, int | None, torch.dtype, int, int], tuple[torch.Tensor, torch.Tensor]] = {}
-_TD_W8A8_OPS: tuple[Callable[..., object], Callable[..., object], Callable[..., object], Callable[..., object]] | None = None
+_TD_W8A8_OPS: tuple[
+    Callable[..., object],
+    Callable[..., object],
+    Callable[..., object],
+    Callable[..., object],
+] | None = None
 
 
 @dataclass(frozen=True)
@@ -47,7 +51,6 @@ class AccelerationReport:
     sla_topk_schedule: str = ""
     replaced_norm: int = 0
     replaced_functional_norm: int = 0
-    cached_text_kv: int = 0
 
     def format(self) -> str:
         return (
@@ -63,8 +66,7 @@ class AccelerationReport:
             f"sla_topk={self.sla_topk:g} "
             f"sla_topk_schedule={self.sla_topk_schedule or 'none'} "
             f"replaced_norm={self.replaced_norm} "
-            f"replaced_functional_norm={self.replaced_functional_norm} "
-            f"cached_text_kv={self.cached_text_kv}"
+            f"replaced_functional_norm={self.replaced_functional_norm}"
         )
 
 
@@ -533,6 +535,10 @@ def replace_ltx_attention(
         raise ValueError(f"--attention_scope must be one of {ATTENTION_SCOPES}")
     if attention_type == "default":
         return 0, 0
+    if attention_type in {"sla", "sagesla"} and not (0.0 < sla_topk <= 1.0):
+        raise ValueError(f"--sla_topk must be in (0, 1], got {sla_topk!r}")
+    if attention_type == "sla" and (sla_block_q <= 0 or sla_block_k <= 0):
+        raise ValueError("--sla_block_q and --sla_block_k must be positive")
 
     parsed_topk_schedule = _parse_sla_topk_schedule(sla_topk_schedule)
     replaced = 0
@@ -567,18 +573,6 @@ def replace_ltx_attention(
         module.attention_function = attention_callable
         replaced += 1
     return replaced, skipped
-
-
-def enable_static_text_kv_cache(model: torch.nn.Module) -> int:
-    """Cache normalized K/V for text cross-attention during no-grad inference."""
-
-    enabled = 0
-    for name, module in model.named_modules():
-        if isinstance(module, Attention) and (name.endswith(".attn2") or name.endswith(".audio_attn2")):
-            module._turbot2av_static_kv_cache = True
-            module._turbot2av_static_kv_cache_value = None
-            enabled += 1
-    return enabled
 
 
 def _set_child_module(root: torch.nn.Module, qualified_name: str, new_module: torch.nn.Module) -> None:
@@ -776,24 +770,26 @@ class _TurboDiffusionInt8Linear(torch.nn.Module):
         return y.reshape(*shape[:-1], self.out_features)
 
     @classmethod
-    def from_linear(cls, original_linear: torch.nn.Linear, quantize: bool = True) -> "_TurboDiffusionInt8Linear":
+    def from_linear(cls, original_linear: torch.nn.Linear) -> "_TurboDiffusionInt8Linear":
+        device = original_linear.weight.device
+        if device.type != "cuda":
+            raise ValueError("TurboDiffusion W8A8 requires Linear weights on CUDA")
         int8_quant, _, _, _ = _td_w8a8_ops()
         int8_layer = cls(
             original_linear.in_features,
             original_linear.out_features,
             bias=original_linear.bias is not None,
             dtype=original_linear.weight.dtype,
-        )
-        if quantize:
-            int8_w, scale = int8_quant(original_linear.weight.data.cuda())
-            int8_layer.int8_weight.copy_(int8_w)
-            int8_layer.scale.copy_(scale)
-            if original_linear.bias is not None:
-                int8_layer.bias.data.copy_(original_linear.bias.data.cuda())
+        ).to(device=device)
+        int8_w, scale = int8_quant(original_linear.weight.detach().contiguous())
+        int8_layer.int8_weight.copy_(int8_w)
+        int8_layer.scale.copy_(scale)
+        if original_linear.bias is not None:
+            int8_layer.bias.copy_(original_linear.bias.detach())
         return int8_layer
 
 
-def _replace_ltx_linears_turbodiffusion(model: torch.nn.Module, quantize: bool, scope: str) -> int:
+def _replace_ltx_linears_turbodiffusion(model: torch.nn.Module, scope: str) -> int:
     """Replace loaded generator Linear layers with TurboDiffusion Int8Linear."""
 
     replacements: dict[str, torch.nn.Module] = {}
@@ -806,57 +802,17 @@ def _replace_ltx_linears_turbodiffusion(model: torch.nn.Module, quantize: bool, 
             continue
         if module.weight.device == torch.device("meta"):
             continue
-        int8_linear = _TurboDiffusionInt8Linear.from_linear(module, quantize=quantize)
-        replacements[name] = int8_linear.to(device=module.weight.device)
+        int8_linear = _TurboDiffusionInt8Linear.from_linear(module)
+        replacements[name] = int8_linear
 
     for name, new_module in replacements.items():
         _set_child_module(model, name, new_module)
     return len(replacements)
 
 
-def _replace_ltx_linears_torchao_compile(model: torch.nn.Module, quantize: bool, scope: str) -> int:
-    """Replace Linear layers with torchao dynamic W8A8 modules compiled by Inductor."""
-
-    if not quantize:
-        raise ValueError("torchao_compile does not support --quant_linear_prequantized checkpoints")
-    try:
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", category=UserWarning, module=r"torchao(\.|$)")
-            from torchao.quantization import Int8DynamicActivationInt8WeightConfig, quantize_
-    except ImportError as exc:
-        raise ImportError(
-            "quant_linear_backend=torchao_compile requires torchao. "
-            "Install it with `pixi run install-torchao` or `pip install torchao`."
-        ) from exc
-
-    warnings.filterwarnings("ignore", category=UserWarning, module=r"torchao(\.|$)")
-    compile_mode = os.environ.get("TURBOT2AV_TORCHAO_COMPILE_MODE", "max-autotune")
-    quant_version = int(os.environ.get("TURBOT2AV_TORCHAO_INT8_VERSION", "2"))
-    replacements: dict[str, torch.nn.Module] = {}
-    for name, module in model.named_modules():
-        if not name or ".attention_function." in name or name.endswith(".attention_function"):
-            continue
-        if not isinstance(module, torch.nn.Linear):
-            continue
-        if not _linear_name_in_quant_scope(name, scope):
-            continue
-        if module.weight.device == torch.device("meta"):
-            continue
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", category=UserWarning, module=r"torchao(\.|$)")
-            quantize_(module, Int8DynamicActivationInt8WeightConfig(version=quant_version))
-        replacements[name] = torch.compile(module, mode=compile_mode)
-
-    for name, new_module in replacements.items():
-        _set_child_module(model, name, new_module)
-    return len(replacements)
-
-
-def _replace_ltx_linears_tilelang_postscale(model: torch.nn.Module, quantize: bool, scope: str) -> int:
+def _replace_ltx_linears_tilelang_postscale(model: torch.nn.Module, scope: str) -> int:
     """Replace Linear layers with TileLang post-scale W8A8 modules."""
 
-    if not quantize:
-        raise ValueError("tilelang_postscale does not support --quant_linear_prequantized checkpoints")
     from ltx_distillation.tilelang_w8a8 import TileLangPostScaleInt8Linear
 
     replacements: dict[str, torch.nn.Module] = {}
@@ -870,7 +826,7 @@ def _replace_ltx_linears_tilelang_postscale(model: torch.nn.Module, quantize: bo
         if module.weight.device == torch.device("meta"):
             continue
         int8_linear = TileLangPostScaleInt8Linear.from_linear(module)
-        replacements[name] = int8_linear.to(device=module.weight.device)
+        replacements[name] = int8_linear
 
     for name, new_module in replacements.items():
         _set_child_module(model, name, new_module)
@@ -886,7 +842,10 @@ def fuse_tilelang_attention_projections(model: torch.nn.Module) -> int:
     for module in model.modules():
         if not isinstance(module, Attention):
             continue
-        if all(isinstance(getattr(module, attr), TileLangPostScaleInt8Linear) for attr in ("to_q", "to_k", "to_v")) and (
+        has_tilelang_qkv = all(
+            isinstance(getattr(module, attr), TileLangPostScaleInt8Linear) for attr in ("to_q", "to_k", "to_v")
+        )
+        if has_tilelang_qkv and (
             module.to_q.in_features == module.to_k.in_features == module.to_v.in_features
         ):
             module.to_qkv = TileLangPostScaleInt8Linear.from_tilelang_linears(
@@ -903,7 +862,6 @@ def fuse_tilelang_attention_projections(model: torch.nn.Module) -> int:
 
 def replace_ltx_linears(
     model: torch.nn.Module,
-    quantize: bool = True,
     scope: str = "all",
     backend: str = "turbodiffusion",
 ) -> int:
@@ -912,11 +870,9 @@ def replace_ltx_linears(
     if backend not in QUANT_LINEAR_BACKENDS:
         raise ValueError(f"Unsupported quant_linear_backend={backend!r}; expected one of {QUANT_LINEAR_BACKENDS}")
     if backend == "turbodiffusion":
-        return _replace_ltx_linears_turbodiffusion(model, quantize=quantize, scope=scope)
-    if backend == "torchao_compile":
-        return _replace_ltx_linears_torchao_compile(model, quantize=quantize, scope=scope)
+        return _replace_ltx_linears_turbodiffusion(model, scope=scope)
     if backend == "tilelang_postscale":
-        return _replace_ltx_linears_tilelang_postscale(model, quantize=quantize, scope=scope)
+        return _replace_ltx_linears_tilelang_postscale(model, scope=scope)
     raise ValueError(f"Unsupported quant_linear_backend={backend!r}")
 
 
@@ -1211,7 +1167,6 @@ def apply_turbodiffusion_acceleration(
     replaced_linear = (
         replace_ltx_linears(
             model,
-            quantize=True,
             scope=quant_linear_scope,
             backend=quant_linear_backend,
         )
@@ -1225,12 +1180,6 @@ def apply_turbodiffusion_acceleration(
     )
     replaced_norm = replace_ltx_norms(model) if fast_norm else 0
     replaced_functional_norm = enable_fast_functional_rms_norm() if fast_norm else 0
-    cached_text_kv = (
-        enable_static_text_kv_cache(model)
-        if (attention_type != "default" or fast_norm or quant_linear)
-        and os.environ.get("TURBOT2AV_CACHE_TEXT_KV", "0").lower() in {"1", "true", "yes"}
-        else 0
-    )
     return AccelerationReport(
         attention_type=attention_type,
         attention_scope=attention_scope,
@@ -1244,5 +1193,4 @@ def apply_turbodiffusion_acceleration(
         sla_topk_schedule=sla_topk_schedule or "",
         replaced_norm=replaced_norm,
         replaced_functional_norm=replaced_functional_norm,
-        cached_text_kv=cached_text_kv,
     )

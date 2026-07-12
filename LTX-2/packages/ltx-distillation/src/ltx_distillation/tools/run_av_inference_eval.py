@@ -8,15 +8,14 @@ files so ``eval.javisbench.main`` can consume the output directory directly.
 from __future__ import annotations
 
 import argparse
+import csv
 import gc
 import hashlib
 import json
 import math
 import os
 import time
-import types
 from contextlib import contextmanager, nullcontext
-from dataclasses import replace as replace_dataclass
 from typing import Any, Tuple
 
 import numpy as np
@@ -32,7 +31,6 @@ from ltx_distillation.acceleration import (
     QUANT_LINEAR_BACKENDS,
     QUANT_LINEAR_SCOPES,
     apply_turbodiffusion_acceleration,
-    replace_ltx_linears,
 )
 from ltx_distillation.inference.bidirectional_pipeline import BidirectionalAVInferencePipeline
 from ltx_distillation.models.ltx_trig_wrapper import create_ltx2_trig_wrapper
@@ -43,13 +41,17 @@ from ltx_distillation.time_utils import rf_to_trig_time
 
 
 def _load_prompts(prompts_file: str, limit: int | None) -> list[str]:
-    import csv
-    with open(prompts_file, "r", encoding="utf-8") as f:
+    with open(prompts_file, "r", encoding="utf-8-sig") as f:
         first = f.readline().strip()
         f.seek(0)
-        if prompts_file.endswith(".csv") or ("," in first and "video_id" in first):
-            prompts = [row.get("prompt", row.get("caption", "")).strip()
-                      for row in csv.DictReader(f) if row]
+        header = next(csv.reader([first]), [])
+        prompt_columns = {column.strip().lower() for column in header} & {"prompt", "caption", "text"}
+        if prompt_columns:
+            reader = csv.DictReader(f)
+            field_name = next(
+                field for field in (reader.fieldnames or []) if field.strip().lower() in prompt_columns
+            )
+            prompts = [row.get(field_name, "").strip() for row in reader if row]
         else:
             prompts = [line.strip() for line in f if line.strip()]
     prompts = [p for p in prompts if p]
@@ -216,56 +218,6 @@ def _model_init_lock(lock_path: str | None, shard_id: int):
             print(f"[AVEval] shard={shard_id} released model-init lock", flush=True)
 
 
-def _shape(value: Any) -> tuple[int, ...] | str:
-    return tuple(value.shape) if hasattr(value, "shape") else type(value).__name__
-
-
-def _install_shape_debug(model: torch.nn.Module) -> None:
-    if os.environ.get("AV_EVAL_DEBUG_SHAPES", "0") != "1":
-        return
-
-    original_forward = model.forward
-
-    def debug_forward(self, *args, **kwargs):
-        conditional_dict = kwargs.get("conditional_dict", {})
-        print(
-            "[AVEval][debug] wrapper "
-            f"video={_shape(kwargs.get('noisy_image_or_video'))} "
-            f"audio={_shape(kwargs.get('noisy_audio'))} "
-            f"video_t={_shape(kwargs.get('timestep'))} "
-            f"audio_t={_shape(kwargs.get('audio_timestep'))} "
-            f"video_ctx={_shape(conditional_dict.get('video_context'))} "
-            f"audio_ctx={_shape(conditional_dict.get('audio_context'))} "
-            f"mask={_shape(conditional_dict.get('attention_mask'))}",
-            flush=True,
-        )
-        return original_forward(*args, **kwargs)
-
-    model.forward = types.MethodType(debug_forward, model)
-
-    try:
-        velocity_model = model.model.velocity_model
-        preprocessor = velocity_model.audio_args_preprocessor
-        simple_preprocessor = getattr(preprocessor, "simple_preprocessor", preprocessor)
-        original_prepare = simple_preprocessor.prepare
-
-        def debug_prepare(modality):
-            x = simple_preprocessor.patchify_proj(modality.latent)
-            print(
-                "[AVEval][debug] audio_prepare "
-                f"latent={_shape(modality.latent)} x={_shape(x)} "
-                f"timesteps={_shape(modality.timesteps)} positions={_shape(modality.positions)} "
-                f"context={_shape(modality.context)} mask={_shape(modality.context_mask)}",
-                flush=True,
-            )
-            del x
-            return original_prepare(modality)
-
-        simple_preprocessor.prepare = debug_prepare
-    except Exception as exc:
-        print(f"[AVEval][debug] install audio preprocessor hook failed: {exc}", flush=True)
-
-
 def _add_noise(original: torch.Tensor, noise: torch.Tensor, sigma: torch.Tensor) -> torch.Tensor:
     while sigma.dim() < original.dim():
         sigma = sigma.unsqueeze(-1)
@@ -418,8 +370,12 @@ def _generate_teacher_sample(
             else:
                 next_t_video = sigma_next.view(1, 1, 1, 1, 1).to(device=device, dtype=dtype)
                 next_t_audio = sigma_next.view(1, 1, 1).to(device=device, dtype=dtype)
-                video = (torch.cos(next_t_video) * video_x0 + torch.sin(next_t_video) * torch.randn_like(video)).to(dtype)
-                audio = (torch.cos(next_t_audio) * audio_x0 + torch.sin(next_t_audio) * torch.randn_like(audio)).to(dtype)
+                video = (
+                    torch.cos(next_t_video) * video_x0 + torch.sin(next_t_video) * torch.randn_like(video)
+                ).to(dtype)
+                audio = (
+                    torch.cos(next_t_audio) * audio_x0 + torch.sin(next_t_audio) * torch.randn_like(audio)
+                ).to(dtype)
         else:
             video = video_x0
             audio = audio_x0
@@ -467,7 +423,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--init_lock_path",
         default=None,
-        help="Path for the model-initialization file lock. Defaults to a checkpoint-keyed lock in /tmp for sharded runs.",
+        help=(
+            "Path for the model-initialization file lock. Defaults to a "
+            "checkpoint-keyed lock in /tmp for sharded runs."
+        ),
     )
     parser.add_argument(
         "--no_init_lock",
@@ -527,10 +486,16 @@ def parse_args() -> argparse.Namespace:
         help="Replace module RMSNorm/LayerNorm layers with TurboDiffusion fused norm modules.",
     )
     parser.add_argument(
+        "--trim_text_context",
+        action="store_true",
+        default=False,
+        help="Drop padded text tokens before inference. Disabled unless explicitly requested.",
+    )
+    parser.add_argument(
         "--quant_linear",
         action="store_true",
         default=False,
-        help="Replace generator Linear layers with TurboDiffusion W8A8 Int8Linear modules.",
+        help="Replace selected generator Linear layers with the requested W8A8 backend.",
     )
     parser.add_argument(
         "--quant_linear_scope",
@@ -551,17 +516,7 @@ def parse_args() -> argparse.Namespace:
         default="turbodiffusion",
         help=(
             "Backend for --quant_linear. turbodiffusion uses TurboDiffusion Int8Linear; "
-            "torchao_compile uses torchao dynamic W8A8 Linear plus torch.compile; "
-            "tilelang_postscale uses a TileLang post-scale INT8 GEMM prototype."
-        ),
-    )
-    parser.add_argument(
-        "--quant_linear_prequantized",
-        action="store_true",
-        default=False,
-        help=(
-            "Load a student checkpoint whose Linear layers were already saved as "
-            "TurboDiffusion Int8Linear buffers."
+            "tilelang_postscale uses the H20-optimized TileLang post-scale INT8 GEMM."
         ),
     )
     parser.add_argument(
@@ -576,8 +531,7 @@ def parse_args() -> argparse.Namespace:
         default=0,
         help=(
             "Run this many generator-only warmup samples before recorded timing. "
-            "Useful for torch.compile/Inductor backends whose first sample "
-            "includes compile/autotune overhead."
+            "Useful for backends whose first sample includes JIT or autotune overhead."
         ),
     )
     parser.add_argument(
@@ -586,33 +540,22 @@ def parse_args() -> argparse.Namespace:
         help="Optional path to write per-sample generator timing records.",
     )
     parser.add_argument(
-        "--profile_cuda_top",
-        action="store_true",
-        default=False,
-        help="Profile the first recorded generator sample and print top CUDA ops.",
-    )
-    parser.add_argument(
-        "--profile_trace",
-        default=None,
-        help="Optional Chrome trace path used with --profile_cuda_top.",
-    )
-    parser.add_argument(
         "--video_height",
         type=int,
         default=None,
-        help="Override cfg.video_height for resolution scaling tests.",
+        help="Override the configured output video height.",
     )
     parser.add_argument(
         "--video_width",
         type=int,
         default=None,
-        help="Override cfg.video_width for resolution scaling tests.",
+        help="Override the configured output video width.",
     )
     parser.add_argument(
         "--num_frames",
         type=int,
         default=None,
-        help="Override cfg.num_frames for resolution scaling tests.",
+        help="Override the configured output frame count.",
     )
     return parser.parse_args()
 
@@ -621,6 +564,8 @@ def main() -> None:
     args = parse_args()
     if args.num_seeds < 1:
         raise ValueError("--num_seeds must be >= 1")
+    if args.trim_text_context:
+        os.environ["TURBOT2AV_TRIM_TEXT_CONTEXT"] = "1"
 
     cfg = OmegaConf.load(args.config_path)
     # Override paths from environment (same as training)
@@ -641,10 +586,6 @@ def main() -> None:
 
     if args.model_kind == "student" and not args.student_checkpoint:
         raise ValueError("--student_checkpoint is required for --model_kind student")
-    if args.quant_linear_prequantized and args.model_kind != "student":
-        raise ValueError("--quant_linear_prequantized is only supported with --model_kind student")
-    if args.quant_linear_prequantized and args.quant_linear_backend != "turbodiffusion":
-        raise ValueError("--quant_linear_prequantized is only supported with --quant_linear_backend turbodiffusion")
 
     torch.backends.cuda.matmul.allow_tf32 = True
     torch.backends.cudnn.allow_tf32 = True
@@ -677,7 +618,6 @@ def main() -> None:
         gemma_path=str(getattr(cfg, "gemma_path", "")),
     )
     force_trig = False
-    prequantized_linear_count = 0
 
     with _model_init_lock(init_lock_path, args.shard_id):
         registry = _make_registry(cache_state_dicts)
@@ -709,18 +649,6 @@ def main() -> None:
                 video_width=int(cfg.video_width),
                 registry=registry,
             ).eval()
-            if args.quant_linear_prequantized:
-                prequantized_linear_count = replace_ltx_linears(
-                    model,
-                    quantize=False,
-                    scope=args.quant_linear_scope,
-                    backend="turbodiffusion",
-                )
-                print(
-                    "[TurboT2AV][accel] prepared prequantized Int8Linear "
-                    f"layers={prequantized_linear_count} scope={args.quant_linear_scope}",
-                    flush=True,
-                )
             _load_generator_state(model, args.student_checkpoint, args.student_strict)
             model.eval()
 
@@ -729,7 +657,7 @@ def main() -> None:
             attention_type=args.attention_type,
             attention_scope=args.attention_scope,
             fast_norm=args.fast_norm,
-            quant_linear=bool(args.quant_linear and not args.quant_linear_prequantized),
+            quant_linear=args.quant_linear,
             quant_linear_scope=args.quant_linear_scope,
             quant_linear_backend=args.quant_linear_backend,
             sla_topk=args.sla_topk,
@@ -737,30 +665,7 @@ def main() -> None:
             sla_block_q=args.sla_block_q,
             sla_block_k=args.sla_block_k,
         )
-        if prequantized_linear_count:
-            acceleration_report = replace_dataclass(
-                acceleration_report,
-                replaced_linear=prequantized_linear_count + acceleration_report.replaced_linear,
-                quant_linear_scope=args.quant_linear_scope,
-                quant_linear_backend="turbodiffusion",
-            )
         print(acceleration_report.format(), flush=True)
-
-        _install_shape_debug(model)
-
-        if os.environ.get("AV_EVAL_DEBUG_SHAPES", "0") == "1":
-            try:
-                velocity_model = model.model.velocity_model
-                probe = torch.zeros((1, 126, 128), device=device, dtype=dtype)
-                probe_out = velocity_model.audio_patchify_proj(probe)
-                print(
-                    f"[AVEval] audio_patchify_proj={type(velocity_model.audio_patchify_proj).__name__} "
-                    f"probe_in={tuple(probe.shape)} probe_out={tuple(probe_out.shape)}",
-                    flush=True,
-                )
-                del probe, probe_out
-            except Exception as exc:
-                print(f"[AVEval] audio_patchify_probe failed: {exc}", flush=True)
 
         text_encoder = create_text_encoder_wrapper(
             checkpoint_path=cfg.checkpoint_path,
@@ -891,7 +796,9 @@ def main() -> None:
                 torch.cuda.manual_seed(prompt_seed)
                 torch.cuda.synchronize(device)
                 gen_start = time.perf_counter()
-                def run_generator_sample() -> tuple[torch.Tensor, torch.Tensor]:
+                def run_generator_sample(
+                    sample_conditioning: dict[str, torch.Tensor],
+                ) -> tuple[torch.Tensor, torch.Tensor]:
                     if args.model_kind == "teacher":
                         unconditional_dict = text_encoder(text_prompts=[negative_prompt])
                         try:
@@ -900,7 +807,7 @@ def main() -> None:
                                 video_shape=tuple(video_shape),
                                 audio_shape=tuple(audio_shape),
                                 sigmas=sigmas,
-                                conditional_dict=conditional_dict,
+                                conditional_dict=sample_conditioning,
                                 unconditional_dict=unconditional_dict,
                                 device=device,
                                 dtype=dtype,
@@ -913,22 +820,10 @@ def main() -> None:
                     return pipeline.generate(
                         video_shape=tuple(video_shape),
                         audio_shape=tuple(audio_shape),
-                        conditional_dict=conditional_dict,
+                        conditional_dict=sample_conditioning,
                     )
 
-                if args.profile_cuda_top and not timing_records:
-                    activities = [torch.profiler.ProfilerActivity.CPU, torch.profiler.ProfilerActivity.CUDA]
-                    with torch.profiler.profile(activities=activities, record_shapes=True) as prof:
-                        video_latent, audio_latent = run_generator_sample()
-                    print(
-                        prof.key_averages().table(sort_by="cuda_time_total", row_limit=35),
-                        flush=True,
-                    )
-                    if args.profile_trace:
-                        prof.export_chrome_trace(args.profile_trace)
-                        print(f"[AVEval][profile] wrote {args.profile_trace}", flush=True)
-                else:
-                    video_latent, audio_latent = run_generator_sample()
+                video_latent, audio_latent = run_generator_sample(conditional_dict)
                 torch.cuda.synchronize(device)
                 gen_elapsed = time.perf_counter() - gen_start
 
@@ -943,10 +838,10 @@ def main() -> None:
                     "sla_topk": args.sla_topk,
                     "sla_topk_schedule": args.sla_topk_schedule,
                     "fast_norm": bool(args.fast_norm),
-                    "quant_linear": bool(args.quant_linear or args.quant_linear_prequantized),
+                    "trim_text_context": _env_flag("TURBOT2AV_TRIM_TEXT_CONTEXT", False),
+                    "quant_linear": bool(args.quant_linear),
                     "quant_linear_scope": args.quant_linear_scope,
                     "quant_linear_backend": args.quant_linear_backend,
-                    "quant_linear_prequantized": bool(args.quant_linear_prequantized),
                     "generator_seconds": gen_elapsed,
                 }
             )

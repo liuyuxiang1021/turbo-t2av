@@ -236,7 +236,7 @@ def fast_gated_residual(
     mask: torch.Tensor | float,
     fallback,
 ) -> torch.Tensor:
-    if not isinstance(mask, float):
+    if not isinstance(mask, float) or mask != 1.0:
         return fallback(x, residual, gate, mask)
     try:
         if (
@@ -644,7 +644,7 @@ def fast_gated_residual_from_ada(
     mask: torch.Tensor | float,
     fallback,
 ) -> torch.Tensor:
-    if not isinstance(mask, float):
+    if not isinstance(mask, float) or mask != 1.0:
         return fallback(x, residual, scale_shift_table, timestep, gate_index, num_ada_params, mask)
     try:
         inputs = _reshape_ada_inputs(x, scale_shift_table, timestep, num_ada_params)

@@ -1,38 +1,16 @@
 from __future__ import annotations
 
-import atexit
-from collections import Counter
 import os
 
-import torch
-import torch.nn.functional as F
 import tilelang
 import tilelang.language as T
+import torch
+import torch.nn.functional as F
 import triton
 import triton.language as tl
 
-
 _ROW_QUANT_WORKSPACES: dict[tuple[str, int | None, torch.dtype, int, int], tuple[torch.Tensor, torch.Tensor]] = {}
 _PAD_WORKSPACES: dict[tuple[str, int | None, torch.dtype, int, int], torch.Tensor] = {}
-_DEBUG_STATS = os.environ.get("TURBOT2AV_TILELANG_W8A8_DEBUG", "").lower() in {"1", "true", "yes"}
-_FORWARD_STATS: Counter[str] = Counter()
-
-
-def _record_forward_stat(kind: str, m: int, k: int, n: int, reason: str = "int8") -> None:
-    if not _DEBUG_STATS:
-        return
-    _FORWARD_STATS[f"{kind}:m={m}:k={k}:n={n}:reason={reason}"] += 1
-
-
-def _dump_forward_stats() -> None:
-    if not _DEBUG_STATS or not _FORWARD_STATS:
-        return
-    print("[TileLangW8A8][debug] forward shape stats:", flush=True)
-    for key, count in _FORWARD_STATS.most_common(40):
-        print(f"[TileLangW8A8][debug] {count} {key}", flush=True)
-
-
-atexit.register(_dump_forward_stats)
 
 
 @triton.jit
@@ -193,7 +171,6 @@ class TileLangPostScaleInt8Linear(torch.nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         if x.dtype != torch.bfloat16 or not x.is_cuda:
-            _record_forward_stat("fallback", 0, self.in_features, self.out_features, f"dtype={x.dtype}:cuda={x.is_cuda}")
             bias = self.bias if self._had_bias else None
             return F.linear(x, self.fp_weight, bias)
         shape = x.shape
@@ -217,10 +194,8 @@ class TileLangPostScaleInt8Linear(torch.nn.Module):
             m = padded_m
             use_padded_m = True
         if m % 128 != 0 or k % 128 != 0 or self.out_features % 128 != 0:
-            _record_forward_stat("fallback", m, k, self.out_features, "unaligned")
             bias = self.bias if self._had_bias else None
             return F.linear(x, self.fp_weight, bias)
-        _record_forward_stat("int8", m, k, self.out_features, "pad_m" if use_padded_m else "int8")
         x_q_buf, x_s_buf = _row_quant_workspace(x_2d)
         x_q, x_s = row_quant_int8(x_2d, x_q_buf, x_s_buf)
         y = torch.empty((m, self.out_features), dtype=torch.bfloat16, device=x_2d.device)
@@ -231,18 +206,22 @@ class TileLangPostScaleInt8Linear(torch.nn.Module):
 
     @classmethod
     def from_linear(cls, original_linear: torch.nn.Linear) -> "TileLangPostScaleInt8Linear":
+        device = original_linear.weight.device
+        if device.type != "cuda":
+            raise ValueError("tilelang_postscale W8A8 requires Linear weights on CUDA")
         int8_layer = cls(
             original_linear.in_features,
             original_linear.out_features,
             bias=original_linear.bias is not None,
             dtype=original_linear.weight.dtype,
-        )
-        int8_w, scale = row_quant_int8(original_linear.weight.data.cuda().contiguous())
+        ).to(device=device)
+        original_weight = original_linear.weight.detach().contiguous()
+        int8_w, scale = row_quant_int8(original_weight)
         int8_layer.int8_weight.copy_(int8_w)
         int8_layer.scale.copy_(scale)
-        int8_layer.fp_weight.data.copy_(original_linear.weight.data.cuda().to(torch.bfloat16))
+        int8_layer.fp_weight.copy_(original_weight.to(torch.bfloat16))
         if original_linear.bias is not None:
-            int8_layer.bias.data.copy_(original_linear.bias.data.cuda().to(torch.bfloat16))
+            int8_layer.bias.copy_(original_linear.bias.detach().to(torch.bfloat16))
         else:
             int8_layer.bias.zero_()
         return int8_layer
@@ -257,18 +236,23 @@ class TileLangPostScaleInt8Linear(torch.nn.Module):
         in_features = linears[0].in_features
         if any(linear.in_features != in_features for linear in linears):
             raise ValueError("Fused TileLang W8A8 linears must share in_features")
+        device = linears[0].int8_weight.device
+        if any(linear.int8_weight.device != device for linear in linears):
+            raise ValueError("Fused TileLang W8A8 linears must share a device")
         fused = cls(
             in_features,
             sum(linear.out_features for linear in linears),
             bias=any(linear._had_bias for linear in linears),
             dtype=torch.bfloat16,
-        )
+        ).to(device=device)
         fused.int8_weight.copy_(torch.cat([linear.int8_weight for linear in linears], dim=0))
         fused.scale.copy_(torch.cat([linear.scale for linear in linears], dim=0))
-        fused.fp_weight.data.copy_(torch.cat([linear.fp_weight for linear in linears], dim=0))
+        fused.fp_weight.copy_(torch.cat([linear.fp_weight for linear in linears], dim=0))
         bias_parts = [
-            linear.bias if linear._had_bias else torch.zeros(linear.out_features, device=linear.bias.device, dtype=linear.bias.dtype)
+            linear.bias
+            if linear._had_bias
+            else torch.zeros(linear.out_features, device=linear.bias.device, dtype=linear.bias.dtype)
             for linear in linears
         ]
-        fused.bias.data.copy_(torch.cat(bias_parts, dim=0))
-        return fused.to(device=linears[0].int8_weight.device)
+        fused.bias.copy_(torch.cat(bias_parts, dim=0))
+        return fused

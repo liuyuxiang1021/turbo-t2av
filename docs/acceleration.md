@@ -11,10 +11,17 @@ the TurboT2AV distillation and training pipeline remains independent.
 - **FastNorm:** module and functional RMSNorm/LayerNorm operations are replaced
   with fused implementations, together with LTX-specific modulation, residual,
   and rotary-embedding helpers.
-- **W8A8 Linear:** weights are stored as INT8 and activations are dynamically
-  quantized to INT8 before transformer Linear operations.
+- **W8A8 Linear:** selected weights are quantized to INT8 at model
+  initialization, and activations are dynamically quantized before transformer
+  Linear operations. A BF16 copy is also retained because unsupported shapes
+  use native Linear, so this path targets compute speed rather than checkpoint
+  compression.
 
 The recommended path combines SageSLA `topk=0.3`, FastNorm, and TileLang W8A8.
+The one-command installer pins the tested SageAttention and SpargeAttn commits
+and applies an H20/Pixi build-only compatibility patch to SpargeAttn. The patch
+selects sources for the target CUDA architecture and does not change its
+attention kernels.
 
 ## Differences From TurboDiffusion
 
@@ -41,11 +48,11 @@ The following generator-only measurements use one H20, 121 frames, and a
 | --- | ---: | ---: | ---: |
 | LTX-2-19B teacher, 40 steps | 318.7405s | - | 1.00x |
 | + TileLang W8A8 and FastNorm | 233.3424s | 1.37x | 1.37x |
-| + four-step TurboT2AV student | 11.7628s | 19.84x | 27.10x |
-| + SageSLA `topk=0.3` | 5.8689s | 2.00x | 54.31x |
+| + four-step TurboT2AV student | 12.1655s | 19.18x | 26.20x |
+| + SageSLA `topk=0.3` and text trimming | 5.8505s | 2.08x | 54.48x |
 
-The fully accelerated four-step student is 2.75x faster than the pure four-step
-student (`16.1096s/video`) and 54.31x faster than the 40-step teacher
+The fully accelerated four-step student is 2.82x faster than the pure four-step
+student (`16.5245s/video`) and 54.48x faster than the 40-step teacher
 (`318.7405s/video`).
 `topk=0.3` was selected as the practical speed/quality setting from paired
 visual comparisons; sparse attention is not numerically lossless and should be

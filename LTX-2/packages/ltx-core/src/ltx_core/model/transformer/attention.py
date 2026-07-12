@@ -184,55 +184,19 @@ class Attention(torch.nn.Module):
         context = x if context is None else context
 
         fused_qkv = getattr(self, "to_qkv", None)
-        k_is_normalized = False
-        cache_enabled = (
-            bool(getattr(self, "_turbot2av_static_kv_cache", False))
-            and not is_self_attention
-            and not self.training
-            and not torch.is_grad_enabled()
-            and k_pe is None
-        )
         if is_self_attention and fused_qkv is not None:
             q, k, v = fused_qkv(x).split(self.heads * self.dim_head, dim=-1)
         else:
             q = self.to_q(x)
-            cache_key = None
-            cached_kv = None
-            if cache_enabled:
-                cache_key = (
-                    context.untyped_storage().data_ptr(),
-                    context.storage_offset(),
-                    tuple(context.shape),
-                    tuple(context.stride()),
-                    context.device,
-                    context.dtype,
-                    context._version,
-                )
-                cached_kv = getattr(self, "_turbot2av_static_kv_cache_value", None)
-                if cached_kv is not None and cached_kv[0] == cache_key:
-                    k, v = cached_kv[1]
-                    k_is_normalized = True
-                else:
-                    cached_kv = None
-
-            if cached_kv is None:
-                fused_kv = getattr(self, "to_kv", None)
-                if fused_kv is not None:
-                    k, v = fused_kv(context).split(self.heads * self.dim_head, dim=-1)
-                else:
-                    k = self.to_k(context)
-                    v = self.to_v(context)
-
-                if cache_enabled:
-                    k = self.k_norm(k)
-                    k_is_normalized = True
-                    self._turbot2av_static_kv_cache_value = (cache_key, (k, v), context)
+            fused_kv = getattr(self, "to_kv", None)
+            if fused_kv is not None:
+                k, v = fused_kv(context).split(self.heads * self.dim_head, dim=-1)
             else:
-                k, v = cached_kv[1]
+                k = self.to_k(context)
+                v = self.to_v(context)
 
         q = self.q_norm(q)
-        if not k_is_normalized:
-            k = self.k_norm(k)
+        k = self.k_norm(k)
 
         if pe is not None:
             q = apply_rotary_emb(q, pe, self.rope_type)

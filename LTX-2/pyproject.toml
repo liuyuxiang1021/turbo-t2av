@@ -69,11 +69,7 @@ dev = { features = ["dev"], solve-group = "default" }
 [tool.pixi.tasks]
 install-pytorch = "pip install torch==2.7.0+cu128 torchvision==0.22.0+cu128 torchaudio==2.7.0+cu128 --index-url https://download.pytorch.org/whl/cu128"
 install-local = { depends-on = ["install-pytorch"], cmd = "pip install -e packages/ltx-core -e packages/ltx-pipelines -e packages/ltx-distillation" }
-install-sageattention = { depends-on = ["install-pytorch"], cmd = "bash -lc 'pip install --no-build-isolation \"${SAGEATTENTION_PACKAGE:-git+https://github.com/thu-ml/SageAttention.git}\"'" }
-install-spargeattn = { depends-on = ["install-pytorch"], cmd = "bash -lc 'pip install --no-build-isolation \"${SPARGEATTN_PACKAGE:-git+https://github.com/thu-ml/SpargeAttn.git}\"'" }
-install-tilelang = { depends-on = ["install-pytorch"], cmd = "pip install tilelang==0.1.11" }
-install-torchao = { depends-on = ["install-pytorch"], cmd = "pip install torchao==0.17.0" }
-install-acceleration = { depends-on = ["install-local"], cmd = "bash -lc 'pip install --no-build-isolation \"${SAGEATTENTION_PACKAGE:-git+https://github.com/thu-ml/SageAttention.git}\" && pip install --no-build-isolation \"${SPARGEATTN_PACKAGE:-git+https://github.com/thu-ml/SpargeAttn.git}\" && pip install tilelang==0.1.11'" }
-
-[tool.pixi.pypi-dependencies]
-lmdb = ">=2.2.1,<3"
+install-sageattention = { depends-on = ["install-pytorch"], cmd = "bash scripts/install_acceleration.sh sageattention" }
+install-spargeattn = { depends-on = ["install-pytorch"], cmd = "bash scripts/install_acceleration.sh spargeattn" }
+install-tilelang = { depends-on = ["install-pytorch"], cmd = "bash scripts/install_acceleration.sh tilelang" }
+install-acceleration = { depends-on = ["install-local"], cmd = "bash scripts/install_acceleration.sh all" }
