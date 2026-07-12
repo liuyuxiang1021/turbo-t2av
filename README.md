@@ -128,27 +128,30 @@ hf download luyu1021/turbo-t2av checkpoints/scm_dmd_checkpoint_001000/model.pth 
 
 ## 3. Run Inference
 
-Set environment variables:
+Run the following commands from `TurboDiffusion/TurboT2AV/LTX-2`:
 
 ```bash
 export TURBO_CHECKPOINT_PATH=/path/to/ltx-2-19b-dev.safetensors
 export TURBO_GEMMA_PATH=/path/to/gemma-3-12b-it-qat-q4_0-unquantized
+export PYTHONPATH=../..:../../turbodiffusion:$PYTHONPATH
 ```
 
-### Student (4 steps, full acceleration)
+`--prompts_file` accepts a text file with one prompt per line or a CSV file with
+a `prompt` column.
+
+### Accelerated Student (Recommended)
 
 ```bash
-cd LTX-2
-PYTHONPATH=/path/to/TurboDiffusion:/path/to/TurboDiffusion/turbodiffusion:packages/ltx-distillation/src:packages/ltx-core/src:packages/ltx-pipelines/src:$PYTHONPATH \
-  CUDA_VISIBLE_DEVICES=0 \
-  pixi run python -m ltx_distillation.tools.run_av_inference_eval \
+CUDA_VISIBLE_DEVICES=0 pixi run python -m ltx_distillation.tools.run_av_inference_eval \
   --config_path packages/ltx-distillation/configs/bidirectional_rcm.yaml \
   --prompts_file /path/to/prompts.csv \
-  --output_dir /path/to/student_accelerated_output \
+  --output_dir /path/to/student_output \
   --model_kind student \
-  --student_checkpoint /path/to/checkpoint.pt \
+  --student_checkpoint /path/to/checkpoints/scm_dmd_checkpoint_001000/model.pth \
   --student_param auto \
   --num_prompts 8 \
+  --video_height 1024 \
+  --video_width 1792 \
   --attention_type sagesla \
   --attention_scope self \
   --sla_topk 0.3 \
@@ -158,135 +161,27 @@ PYTHONPATH=/path/to/TurboDiffusion:/path/to/TurboDiffusion/turbodiffusion:packag
   --quant_linear_backend tilelang_postscale
 ```
 
-`--attention_scope self` replaces video/audio self-attention only. Masked text
-cross-attention stays on the native backend because SageAttention/SageSLA does
-not support the LTX text mask path here. For timing-only comparisons, add
-`--skip_decode --timing_json /path/to/timing.json`.
-
-### Teacher (40 steps)
+### Teacher Baseline (40 Steps)
 
 ```bash
-cd LTX-2
-PYTHONPATH=packages/ltx-distillation/src:packages/ltx-core/src:packages/ltx-pipelines/src:$PYTHONPATH \
-  CUDA_VISIBLE_DEVICES=0 \
-  pixi run python -m ltx_distillation.tools.run_av_inference_eval \
+CUDA_VISIBLE_DEVICES=0 pixi run python -m ltx_distillation.tools.run_av_inference_eval \
   --config_path packages/ltx-distillation/configs/bidirectional_rcm.yaml \
   --prompts_file /path/to/prompts.csv \
   --output_dir /path/to/teacher_output \
   --model_kind teacher \
   --teacher_mode native_rf \
   --teacher_steps 40 \
-  --num_prompts 8
+  --num_prompts 8 \
+  --video_height 1024 \
+  --video_width 1792
 ```
 
-`--sla_topk 1.0` is the quality-first dense-block default for TurboT2AV.
-Lower values such as `0.8`, `0.6`, `0.4`, or `0.3` are faster on long video
-sequences, but they change generated content more visibly because SLA is a
-sparse-linear attention approximation, not a numerically equivalent
-dense-attention kernel. The current speed/quality tradeoff used for the H20
-figures is `--sla_topk 0.3`.
+The reported H20 tradeoff uses `--sla_topk 0.3`; use `1.0` when preserving dense
+blocks is more important than speed. `--attention_scope self` accelerates
+video/audio self-attention while masked text cross-attention stays on the native
+backend. For generator-only timing, add
+`--skip_decode --timing_json /path/to/timing.json`.
 
-For finer control, `--sla_topk_schedule` can set different top-k ratios by
-transformer layer. Unmatched layers fall back to `--sla_topk`:
-
-```bash
---sla_topk 0.3 --sla_topk_schedule 0-15:0.35,16-31:0.3,32-47:0.3
-```
-
-This is useful when early layers need denser attention for quality while later
-layers can use a more aggressive sparse pattern for speed. Uniform `topk=0.3`
-is the reported H20 setting unless a target workload validates a better
-schedule.
-
-### Experimental W8A8 Linear Quantization
-
-W8A8 is available as an opt-in experiment:
-
-```bash
---quant_linear --quant_linear_scope all --quant_linear_backend tilelang_postscale
-```
-
-`--quant_linear_scope all` matches the broad TurboDiffusion-style replacement,
-`ffn` targets all transformer feed-forward Linear layers, `video_ffn` targets
-only video feed-forward Linear layers, `audio_ffn` targets only audio
-feed-forward Linear layers, and `non_attention` skips attention projection
-layers. The recommended H20 backend is `tilelang_postscale`, which stores W8
-weights once and dynamically quantizes activations to A8 before a TileLang INT8
-GEMM.
-
-To make a strict TurboDiffusion-style prequantized checkpoint, first save a
-student state dict whose selected Linear layers already contain `int8_weight`
-and `scale` buffers:
-
-```bash
-python -m ltx_distillation.tools.prequantize_av_student \
-  --student_checkpoint /path/to/model.pth \
-  --output_path /path/to/model_w8a8_video_ffn_prequant.pth \
-  --quant_linear_scope video_ffn
-```
-
-Then load it with:
-
-```bash
---quant_linear_prequantized --quant_linear_scope video_ffn
-```
-
-`--quant_linear_backend turbodiffusion` uses TurboDiffusion's strict
-`Int8Linear` kernel. In strict mode the selected weights are stored once as
-`int8_weight` plus `scale` buffers, and each forward uses TurboDiffusion
-`quant_cuda` for A8 activation quantization followed by
-`gemm_cuda_swizzle_bias`. This is not fake quantization and it does not
-recompress weights on every forward, but the strict backend was slower than
-BF16 cuBLASLt for TurboT2AV's H20 FFN shapes. The integrated speed path uses
-`tilelang_postscale` instead.
-
-FFN layers are large dense `W*x+b` GEMMs, so INT8 can reduce weight bandwidth
-and GEMM cost. Attention projection layers also contain GEMMs, but the
-attention block is dominated by QKV reshaping, layout changes, softmax/masking,
-and KV reads, so quantizing those projections is less likely to improve
-end-to-end runtime. TurboDiffusion W8A8 is not enabled by default. The compiled
-torchao backend is also not default because it adds a dependency and a
-first-sample compile cost.
-
-H20 generator-only measurements use `--skip_decode` and 121 frames. The costly
-teacher rows use one measured generation; the student rows report medians from
-repeated generations. The stages are cumulative, and the current recommended
-stack is SageSLA self-attention with `topk=0.3`, FastNorm, text-context
-trimming, fused Ada/RoPE helpers, and TileLang post-scale W8A8 Linear.
-
-| Stage | Generator time | Speedup vs previous | Speedup vs teacher | Notes |
-| --- | ---: | ---: | ---: | --- |
-| LTX-2-19B teacher (40 steps) | 318.7405s/video | - | 1.00x | Dense teacher baseline. |
-| + W8A8/FastNorm | 233.3424s/video | 1.37x | 1.37x | TileLang W8A8 Linear and FastNorm on the teacher. |
-| + rCM (4-step student) | 11.7628s/video | 19.84x | 27.10x | Distilled student retaining W8A8/FastNorm and dense attention. |
-| + SageSLA `topk=0.3` | 5.8689s/video | 2.00x | 54.31x | 96 self-attention modules and 1370 Linear modules replaced. |
-
-The non-cumulative pure 4-step student baseline is 16.1096s/video. It is kept
-out of the staged table because the TD-style `+ rCM` row retains the preceding
-W8A8/FastNorm optimizations.
-
-SageSLA affects quality because it sparsifies self-attention. Earlier decoded
-visual checks showed `topk=0.3` is a useful high-resolution speed/quality
-tradeoff. Lower top-k values should be rechecked visually for the target prompt
-distribution.
-
-Component-level H20 validation:
-
-| Component | Shape / setting | Dense or BF16 baseline | Accelerated path | Speedup |
-| --- | --- | ---: | ---: | ---: |
-| Self-attention | `1024x1792`, 28672 video tokens | SDPA 37.70ms | SageSLA `topk=0.3` 7.818ms | 4.82x |
-| TileLang W8A8 GEMM | `M=28672,N=16384,K=4096` | BF16 5.281ms | W8A8 + A8 quant 3.375ms | 1.56x |
-| TileLang W8A8 GEMM | `M=28672,N=4096,K=16384` | BF16 5.456ms | W8A8 + A8 quant 3.397ms | 1.61x |
-
-The strict TurboDiffusion `Int8Linear` backend precompresses weights correctly,
-but was slower than BF16 cuBLASLt on this H20 setup for TurboT2AV FFN shapes.
-The integrated W8A8 path therefore uses the TileLang post-scale kernel, which
-keeps INT8 accumulation continuous over K and applies activation/weight scales
-in the epilogue. Text K/V caching was also tested as an experimental switch
-(`TURBOT2AV_CACHE_TEXT_KV=1`), but it did not change measured generator time and
-is off by default.
-
-`--prompts_file` supports CSV (`video_id,prompt`) or plain text (one prompt per line).
-
-Outputs are saved under the requested `--output_dir` with separate subfolders:
-`video/` for MP4 files, `audio/` for WAV files, and `json/` for prompt metadata.
+Each sample is written directly under `--output_dir` as matching `.mp4`, `.wav`,
+and `.json` files. See [Acceleration Reference](docs/acceleration.md) for SLA
+schedules, W8A8 backends, prequantized checkpoints, and H20 microbenchmarks.
