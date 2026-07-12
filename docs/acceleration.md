@@ -45,7 +45,8 @@ The following generator-only measurements use one H20, 121 frames, and a
 | + SageSLA `topk=0.3` | 5.8689s | 2.00x | 54.31x |
 
 The fully accelerated four-step student is 2.75x faster than the pure four-step
-student (`16.1096s/video`) and 54.31x faster than the 40-step teacher.
+student (`16.1096s/video`) and 54.31x faster than the 40-step teacher
+(`318.7405s/video`).
 `topk=0.3` was selected as the practical speed/quality setting from paired
 visual comparisons; sparse attention is not numerically lossless and should be
 revalidated for a different resolution or prompt distribution.
