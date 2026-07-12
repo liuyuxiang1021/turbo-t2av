@@ -66,7 +66,8 @@ install_spargeattn() {
 }
 
 install_tilelang() {
-    python -m pip install tilelang==0.1.11
+    python -m pip install apache-tvm-ffi==0.1.10 tilelang==0.1.11
+    python -c "import tilelang"
 }
 
 case "${1:-all}" in

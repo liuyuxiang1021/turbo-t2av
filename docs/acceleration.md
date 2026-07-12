@@ -21,6 +21,8 @@ The recommended path combines SageSLA `topk=0.3`, FastNorm, and TileLang W8A8.
 The one-command installer pins the tested SageAttention and SpargeAttn commits
 and applies build-only compatibility patches. They keep architecture-specific
 CUDA sources scoped to their valid targets and do not change attention kernels.
+It also pins the tested TileLang and TVM FFI versions so a fresh environment
+does not resolve an incompatible TVM FFI runtime.
 
 ## Differences From TurboDiffusion
 
