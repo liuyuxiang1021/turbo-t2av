@@ -44,10 +44,8 @@ The following generator-only measurements use one H20, 121 frames, and a
 | + four-step TurboT2AV student | 11.7628s | 19.84x | 27.10x |
 | + SageSLA `topk=0.3` | 5.8689s | 2.00x | 54.31x |
 
-The pure four-step student without the inference optimizations takes
-16.1096s/video, making the final path 2.75x faster than the pure student.
-SageSLA has the largest inference-kernel benefit at this resolution because the
-video self-attention sequence contains 28,672 tokens. `topk=0.3` was selected
-as the practical speed/quality setting from paired visual comparisons; sparse
-attention is not numerically lossless and should be revalidated for a different
-resolution or prompt distribution.
+The fully accelerated four-step student is 2.75x faster than the pure four-step
+student (`16.1096s/video`) and 54.31x faster than the 40-step teacher.
+`topk=0.3` was selected as the practical speed/quality setting from paired
+visual comparisons; sparse attention is not numerically lossless and should be
+revalidated for a different resolution or prompt distribution.
