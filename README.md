@@ -67,7 +67,7 @@ recommended SageSLA + FastNorm + TileLang W8A8 inference path.
 
 | Model Name | Checkpoint Link |
 | --- | --- |
-| TurboT2AV-14BVideo-5BAudio | [Hugging Face Model](https://huggingface.co/luyu1021/turbo-t2av) |
+| TurboT2AV-14BVideo-5BAudio | [Hugging Face Model](https://huggingface.co/luyu1021/TurboT2AV) |
 | LTX-2-19B | [Hugging Face Model](https://huggingface.co/Lightricks/LTX-2) |
 | Gemma-3-12B-IT-QAT-Q4_0 | [Hugging Face Model](https://huggingface.co/google/gemma-3-12b-it-qat-q4_0-unquantized) |
 
@@ -88,7 +88,7 @@ hf download google/gemma-3-12b-it-qat-q4_0-unquantized --local-dir /path/to/chec
 TurboT2AV main checkpoint:
 
 ```bash
-hf download luyu1021/turbo-t2av \
+hf download luyu1021/TurboT2AV \
   --include "checkpoints/turbot2av_main/*" \
   --local-dir /path/to/turbo-t2av-weights
 ```
