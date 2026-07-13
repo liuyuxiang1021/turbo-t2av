@@ -63,6 +63,18 @@ This single task installs the local LTX packages, CUDA 12.8 PyTorch,
 SageAttention, SpargeAttn, and TileLang. It provides everything required by the
 recommended SageSLA + FastNorm + TileLang W8A8 inference path.
 
+### Development Tests (Optional)
+
+Run the unit tests in the development environment with:
+
+```bash
+pixi run -e dev test
+```
+
+The `test` task installs CUDA 12.8 PyTorch and the local LTX packages in the
+development environment before running the test suite. Inference-only users do
+not need this step.
+
 ## 2. Download Weights
 
 | Model Name | Checkpoint Link |

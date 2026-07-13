@@ -73,3 +73,4 @@ install-sageattention = { depends-on = ["install-pytorch"], cmd = "bash scripts/
 install-spargeattn = { depends-on = ["install-pytorch"], cmd = "bash scripts/install_acceleration.sh spargeattn" }
 install-tilelang = { depends-on = ["install-pytorch"], cmd = "bash scripts/install_acceleration.sh tilelang" }
 install-acceleration = { depends-on = ["install-local"], cmd = "bash scripts/install_acceleration.sh all" }
+test = { depends-on = ["install-local"], cmd = "pytest -q packages/ltx-core/tests packages/ltx-distillation/tests" }
