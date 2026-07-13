@@ -93,14 +93,14 @@ export HF_TOKEN=your_huggingface_token
 Base model weights:
 
 ```bash
-hf download Lightricks/LTX-2 ltx-2-19b-dev.safetensors --local-dir /path/to/checkpoints/LTX-2
-hf download google/gemma-3-12b-it-qat-q4_0-unquantized --local-dir /path/to/checkpoints/gemma-3-12b-it-qat-q4_0-unquantized
+pixi run hf download Lightricks/LTX-2 ltx-2-19b-dev.safetensors --local-dir /path/to/checkpoints/LTX-2
+pixi run hf download google/gemma-3-12b-it-qat-q4_0-unquantized --local-dir /path/to/checkpoints/gemma-3-12b-it-qat-q4_0-unquantized
 ```
 
 TurboT2AV main checkpoint:
 
 ```bash
-hf download luyu1021/TurboT2AV \
+pixi run hf download luyu1021/TurboT2AV \
   --include "checkpoints/turbot2av_main/*" \
   --local-dir /path/to/turbo-t2av-weights
 ```
