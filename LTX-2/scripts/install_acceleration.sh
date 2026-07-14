@@ -56,13 +56,17 @@ install_sageattention() {
 
 install_spargeattn() {
     local package="${SPARGEATTN_PACKAGE:-}"
+    # SpargeAttn builds hundreds of independent CUDA instantiations, so give
+    # this extension a scoped job count without changing the other builders.
+    local spargeattn_max_jobs="${SPARGEATTN_MAX_JOBS:-8}"
     if [[ -z "${package}" ]]; then
         package="${BUILD_ROOT}/SpargeAttn"
         clone_commit "https://github.com/thu-ml/SpargeAttn.git" "${SPARGEATTN_COMMIT}" "${package}"
         git -C "${package}" apply --unidiff-zero "${PROJECT_DIR}/patches/spargeattn-h20-build.patch"
     fi
 
-    python -m pip install --no-build-isolation "${package}"
+    MAX_JOBS="${spargeattn_max_jobs}" \
+        python -m pip install --no-build-isolation "${package}"
 }
 
 install_tilelang() {
