@@ -717,6 +717,11 @@ def main() -> None:
             prompt_idx = indices[warmup_idx % len(indices)]
             prompt = prompts[prompt_idx]
             conditional_dict = text_encoder(text_prompts=[prompt])
+            unconditional_dict = (
+                text_encoder(text_prompts=[negative_prompt])
+                if args.model_kind == "teacher"
+                else None
+            )
             prompt_seed = int(args.seed) + warmup_idx
             with torch.random.fork_rng(devices=[device]):
                 torch.manual_seed(prompt_seed)
@@ -724,7 +729,8 @@ def main() -> None:
                 torch.cuda.synchronize(device)
                 warmup_start = time.perf_counter()
                 if args.model_kind == "teacher":
-                    unconditional_dict = text_encoder(text_prompts=[negative_prompt])
+                    if unconditional_dict is None:
+                        raise RuntimeError("Teacher unconditional conditioning was not initialized")
                     video_latent, audio_latent = _generate_teacher_sample(
                         teacher=model,
                         video_shape=tuple(video_shape),
@@ -738,7 +744,6 @@ def main() -> None:
                         audio_cfg=float(getattr(cfg, "teacher_benchmark_audio_guidance_scale", 5.0)),
                         mode=args.teacher_mode,
                     )
-                    del unconditional_dict
                 else:
                     video_latent, audio_latent = pipeline.generate(
                         video_shape=tuple(video_shape),
@@ -748,6 +753,8 @@ def main() -> None:
                 torch.cuda.synchronize(device)
                 warmup_elapsed = time.perf_counter() - warmup_start
             del conditional_dict, video_latent, audio_latent
+            if unconditional_dict is not None:
+                del unconditional_dict
             torch.cuda.empty_cache()
             print(
                 f"[AVEval] warmup index={prompt_idx} "
@@ -763,6 +770,11 @@ def main() -> None:
     for local_prompt_pos, prompt_idx in enumerate(indices, start=1):
         prompt = prompts[prompt_idx]
         conditional_dict = text_encoder(text_prompts=[prompt])
+        unconditional_dict = (
+            text_encoder(text_prompts=[negative_prompt])
+            if args.model_kind == "teacher"
+            else None
+        )
 
         for seed_idx in range(int(args.num_seeds)):
             if args.same_seed_for_all_prompts:
@@ -800,23 +812,21 @@ def main() -> None:
                     sample_conditioning: dict[str, torch.Tensor],
                 ) -> tuple[torch.Tensor, torch.Tensor]:
                     if args.model_kind == "teacher":
-                        unconditional_dict = text_encoder(text_prompts=[negative_prompt])
-                        try:
-                            return _generate_teacher_sample(
-                                teacher=model,
-                                video_shape=tuple(video_shape),
-                                audio_shape=tuple(audio_shape),
-                                sigmas=sigmas,
-                                conditional_dict=sample_conditioning,
-                                unconditional_dict=unconditional_dict,
-                                device=device,
-                                dtype=dtype,
-                                video_cfg=float(getattr(cfg, "teacher_benchmark_video_guidance_scale", 3.0)),
-                                audio_cfg=float(getattr(cfg, "teacher_benchmark_audio_guidance_scale", 5.0)),
-                                mode=args.teacher_mode,
-                            )
-                        finally:
-                            del unconditional_dict
+                        if unconditional_dict is None:
+                            raise RuntimeError("Teacher unconditional conditioning was not initialized")
+                        return _generate_teacher_sample(
+                            teacher=model,
+                            video_shape=tuple(video_shape),
+                            audio_shape=tuple(audio_shape),
+                            sigmas=sigmas,
+                            conditional_dict=sample_conditioning,
+                            unconditional_dict=unconditional_dict,
+                            device=device,
+                            dtype=dtype,
+                            video_cfg=float(getattr(cfg, "teacher_benchmark_video_guidance_scale", 3.0)),
+                            audio_cfg=float(getattr(cfg, "teacher_benchmark_audio_guidance_scale", 5.0)),
+                            mode=args.teacher_mode,
+                        )
                     return pipeline.generate(
                         video_shape=tuple(video_shape),
                         audio_shape=tuple(audio_shape),
@@ -877,6 +887,8 @@ def main() -> None:
             torch.cuda.empty_cache()
 
         del conditional_dict
+        if unconditional_dict is not None:
+            del unconditional_dict
         torch.cuda.empty_cache()
 
     elapsed = time.perf_counter() - start
